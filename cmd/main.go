@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	utils "github.com/fastbear1/quack/internal/utils"
+	proc  "github.com/fastbear1/quack/runner"
 )
 
 const (
@@ -50,29 +51,31 @@ flags:
 )
 
 func main() {
-	var yconf utils.ConfigYaml
-	cnf, err := yconf.ReadConfig()
-	if err != nil {
-		fmt.Println("Can't config file")
+	var conf utils.ConfigYaml
+
+	notFound := conf.ReadConfig()
+	if notFound != nil {
+		fmt.Println("Can't find config file quack_config.yaml")
 	}
 
-	flag.Var(&cnf.Models.Path, "models", "path to gorm models")
-	flag.Var(&cnf.Database.Uri, "uri", "database URI")
-	flag.Var(&cnf.Database.Name, "dbname", "database name")
-	flag.Var(&cnf.Migrations.Path, "path", "path tp directory with migration files")
+	flag.Var(&conf.Models.Path, "models", "path to gorm models")
+	flag.Var(&conf.Database.Uri, "uri", "database URI")
+	flag.Var(&conf.Database.Name, "dbname", "database name")
+	flag.Var(&conf.Migrations.Path, "path", "path tp directory with migration files")
 
-	flag.Var(&cnf.Models.Exclude, "exclude", "Exlude gorm models")
-	flag.Var(&cnf.Database.Exclude, "db-exclude", "Exlude db tables")
+	flag.Var(&conf.Models.Exclude, "exclude", "Exlude gorm models")
+	flag.Var(&conf.Database.Exclude, "db-exclude", "Exlude db tables")
 
 	flag.Parse()
-	fmt.Println(cnf)
 
+	if notFound != nil {
+		if conf.Database.Uri == "" || conf.Database.Name == "" || conf.Models.Path == "" && conf.Migrations.Path == "" {
+			fmt.Println("Please provide all mandatory params(uri, models, dbname and path), using flags or configuration file")
+			panic("Exiting....")
+		}
+	}
 	// check commands
 	var commands []string = flag.Args()
-
-	var conf utils.Config
-	conf.GetConfig()
-	fmt.Println(conf)
 
 	if len(commands) > 0 {
 		switch commands[0] {
@@ -82,8 +85,9 @@ func main() {
 			fmt.Println(todoList)
 		case "run":
 			fmt.Println("Quacking migration file")
+			proc.Run(&conf)
 		default:
-			fmt.Println("Any command presented, use help to view usefull information")
+			fmt.Println("Unknown command, use help to view run exmaples")
 		}
 	} else {
 		fmt.Println("Any command presented, use help to view usefull information")

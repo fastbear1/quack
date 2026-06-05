@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/fastbear1/quack/drivers"
 	utils "github.com/fastbear1/quack/internal/utils"
 
 	"github.com/jackc/pgx/v5"
@@ -20,7 +21,13 @@ import (
 var POSTGRES_URL = "postgres://stexp:1!password!2@postgres:5432/stexp"
 
 func Run(conf *utils.ConfigYaml) {
+	// step 1: check database
 
+	drv, err := drivers.GetDriver(conf.Database.Type)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(drv)
 }
 
 type Column struct {
@@ -60,9 +67,9 @@ type TableMeta struct {
 	Indeces []IndexMeta
 }
 
-func Process(conf *utils.Config) {
+func Process(conf *utils.ConfigYaml) {
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, conf.Postgres_url)
+	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
 	if err != nil {
 		fmt.Printf("Connection error: %s", err)
 	} else {

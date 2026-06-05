@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 
-	utils "github.com/fastbear1/quack/internal/utils"
-	proc  "github.com/fastbear1/quack/runner"
+	proc "github.com/fastbear1/quack/runner"
+	"github.com/fastbear1/quack/utils"
 )
 
 const (
@@ -52,6 +52,9 @@ flags:
 
 func main() {
 	var conf utils.ConfigYaml
+
+	// Defualt database is postgres. Support for other database currently not implemented
+	conf.Database.Type = "postgres"
 
 	notFound := conf.ReadConfig()
 	if notFound != nil {

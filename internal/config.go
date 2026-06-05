@@ -39,6 +39,7 @@ type ConfigYaml struct {
 		Uri     StringVal  `yaml:"uri"`
 		Name    StringVal  `yaml:"name"`
 		Exclude StringList `yaml:"exclude"`
+		Type    string
 	} `yaml:"database"`
 	Models struct {
 		Path    StringVal  `yaml:"path"`

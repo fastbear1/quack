@@ -1,4 +1,4 @@
-package scanner
+package runner
 
 import (
 	"flag"
@@ -11,7 +11,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/fastbear1/quack/drivers"
+	utils "github.com/fastbear1/quack/internal"
 )
+
+func getDbMeta(conf *utils.ConfigYaml) ([]string, error) {
+	drv, err := drivers.GetDriver(conf.Database.Type)
+	fmt.Println(drv)
+	utils.CheckErrLite(err)
+	data, err := drv.GetData(conf)
+	fmt.Println(data)
+	return data, err
+}
 
 func formatNode(fset *token.FileSet, node ast.Node) (string, error) {
 	var buf strings.Builder
@@ -77,7 +89,7 @@ func printStructs(fset *token.FileSet, file *ast.File) []ModelStruct {
 
 						fieldData.FieldType = mustFormatNode(fset, field.Type)
 						if field.Tag != nil {
-							fieldData.FieldTag = field.Tag.Value[1   : len(field.Tag.Value)-1]
+							fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
 						}
 
 						if field.Names != nil {
@@ -150,4 +162,3 @@ func Scan() []ModelStruct {
 	// Visit all files and collect struct definitions.
 	return visitFiles(fset, files)
 }
-

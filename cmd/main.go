@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	utils "github.com/fastbear1/quack/internal"
 	proc "github.com/fastbear1/quack/runner"
-	"github.com/fastbear1/quack/utils"
 )
 
 const (

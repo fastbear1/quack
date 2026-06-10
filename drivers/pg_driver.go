@@ -8,10 +8,19 @@ import (
 
 	utils "github.com/fastbear1/quack/internal"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// Type conversion
+// Type definitions
+type PgColumn struct {
+	Column_name              string
+	Data_type                string
+	Character_maximum_length pgtype.Uint32
+	Is_nullable              string
+	Column_default           pgtype.Text
+}
 
+// Type conversion
 var TypeConversion = map[string]string{
 	"uint":   "bigint",
 	"uint16": "smallint",
@@ -29,7 +38,7 @@ const (
 
 type PgHandler struct{}
 
-func (pg *PgHandler) GetData(conf *utils.ConfigYaml) ([]string, error) {
+func (pg *PgHandler) GetTablesList(conf *utils.ConfigYaml) ([]string, error) {
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
 	if err != nil {
@@ -43,6 +52,87 @@ func (pg *PgHandler) GetData(conf *utils.ConfigYaml) ([]string, error) {
 		return []string{}, nil
 	}
 	return dbtables, nil
+}
+
+func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([]Column, error) {
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+	var res []Column = []Column{}
+	if err != nil {
+		return []Column{}, err
+	}
+	defer conn.Close(ctx)
+
+	rows, err := conn.Query(
+		ctx,
+		`SELECT column_name, data_type, character_maximum_length, is_nullable, column_default 
+		FROM information_schema.columns 
+		WHERE table_name = @table`,
+		pgx.NamedArgs{
+			"table": name,
+		},
+	)
+	if err != nil {
+		fmt.Println("Quering table columns metadata error...")
+		return []Column{}, err
+	}
+	notes, err := pgx.CollectRows(rows, pgx.RowToStructByName[PgColumn])
+	if err != nil {
+		return []Column{}, err
+	}
+	// Find primary key field
+	rowid, err := conn.Query(
+		ctx,
+		`SELECT 
+			kc.constraint_name, 
+			kc.column_name 
+		FROM information_schema.key_column_usage kc 
+		JOIN information_schema.table_constraints tc 
+			ON kc.constraint_name = tc.constraint_name 
+		WHERE tc.constraint_type = 'PRIMARY KEY' 
+			AND kc.table_name=@table`,
+		pgx.NamedArgs{
+			"table": name,
+		},
+	)
+	defer rowid.Close()
+
+	utils.CheckErrLite(err)
+	var pk_const_name, pk_column_name string
+
+	for rowid.Next() {
+		err = rowid.Scan(&pk_const_name, &pk_column_name)
+		utils.CheckErrLite(err)
+	}
+
+	for i := 0; i < len(notes); i++ {
+		res = append(res, Column{
+			ColumnName:    notes[i].Column_name,
+			DataType:      normalizeCharacterVariyng(notes[i].Data_type, notes[i].Character_maximum_length),
+			IsNullable:    transformNullToString(notes[i].Is_nullable),
+			ColumnDefault: notes[i].Column_default.String,
+			IsPrimary: func(lname string, rname string) bool {
+				if lname == rname {
+					return true
+				}
+				return false
+			}(notes[i].Column_name, pk_column_name),
+			PrimaryConstraint: func(lname string, rname string) string {
+				if lname == rname {
+					return pk_const_name
+				}
+				return ""
+			}(notes[i].Column_name, pk_column_name),
+		})
+	}
+	return res, nil
+}
+
+func normalizeCharacterVariyng(data_type string, lenght pgtype.Uint32) string {
+	if data_type == "character varying" {
+		data_type = fmt.Sprintf("varchar(%d)", lenght.Uint32)
+	}
+	return data_type
 }
 
 func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([]string, error) {
@@ -74,7 +164,7 @@ func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([
 	return tables, err
 }
 
-func TransformName(name string) string {
+func (pg *PgHandler) TransformName(name string) string {
 	// Camel case to snake case
 	var buffer bytes.Buffer
 	delta := 'a' - 'A'
@@ -94,7 +184,14 @@ func TransformName(name string) string {
 	return buffer.String()
 }
 
-func TransformNull(nullable bool, def_val string) bool {
+func transformNullToString(isnull string) bool {
+	if isnull == "NO" {
+		return false
+	}
+	return true
+}
+
+func (pg *PgHandler) TransformNull(nullable bool, def_val string) bool {
 	var use_null bool = false
 	if def_val == "" && !nullable {
 		use_null = true
@@ -102,7 +199,7 @@ func TransformNull(nullable bool, def_val string) bool {
 	return use_null
 }
 
-func TransformType(g_type string) string {
+func (pg *PgHandler) TransformType(g_type string) string {
 	tp, ok := TypeConversion[g_type]
 	if !ok {
 		return g_type
@@ -110,7 +207,7 @@ func TransformType(g_type string) string {
 	return tp
 }
 
-func TransformDefault(val string) string {
+func (pg *PgHandler) TransformDefault(val string) string {
 	defval := val
 	if defval != "" {
 		match, _ := regexp.MatchString(`(.*)\(\)(.*)`, val)

@@ -36,7 +36,7 @@ func Run(conf *utils.ConfigYaml) {
 	StructRaw, err := Scan(conf)
 	utils.CheckErrLite(err)
 	gormStructMeta := parseModelStruct(StructRaw, drv)
-	fmt.Println(gormStructMeta)
+	differences, err := compareMetaState(dbTablesMeta, gormStructMeta)
 }
 
 func parseModelStruct(data []ModelStruct, drv driver.DbHandler) []driver.TableMeta {
@@ -99,4 +99,10 @@ func parseTag(col *driver.Column, tag string) {
 			}
 		}
 	}
+}
+
+func compareMetaState(dbmeta *driver.TableMeta, gmeta *driver.TableMeta) ([]driver.TableMeta, error) {
+	fmt.Println(dbmeta)
+	fmt.Println(gmeta)
+	return []driver.TableMeta{}, nil
 }

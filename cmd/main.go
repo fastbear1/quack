@@ -51,6 +51,29 @@ flags:
 )
 
 func main() {
+	conf := ParseFlags()
+
+	// check commands
+	var commands []string = flag.Args()
+
+	if len(commands) > 0 {
+		switch commands[0] {
+		case "help":
+			fmt.Println(helpInfo)
+		case "todo":
+			fmt.Println(todoList)
+		case "run":
+			fmt.Println("Quacking migration file")
+			proc.Run(conf)
+		default:
+			fmt.Println("Unknown command, use help to view run exmaples")
+		}
+	} else {
+		fmt.Println("Any command presented, use help to view usefull information")
+	}
+}
+
+func ParseFlags() *utils.ConfigYaml {
 	var conf utils.ConfigYaml
 
 	// Defualt database is postgres. Support for other database currently not implemented
@@ -77,23 +100,5 @@ func main() {
 			panic("Exiting....")
 		}
 	}
-	// check commands
-	var commands []string = flag.Args()
-
-	if len(commands) > 0 {
-		switch commands[0] {
-		case "help":
-			fmt.Println(helpInfo)
-		case "todo":
-			fmt.Println(todoList)
-		case "run":
-			fmt.Println("Quacking migration file")
-			proc.Run(&conf)
-		default:
-			fmt.Println("Unknown command, use help to view run exmaples")
-		}
-	} else {
-		fmt.Println("Any command presented, use help to view usefull information")
-	}
-
+	return &conf
 }

@@ -10,7 +10,7 @@ import (
 
 func Run(conf *utils.ConfigYaml) {
 	// step 1: check connection to database
-	var dbTablesMeta []driver.TableMeta = []driver.TableMeta{}
+	var dbTablesMeta []driver.TableMeta
 
 	drv, err := driver.GetDriver(conf.Database.Type)
 	utils.CheckErrLite(err)
@@ -30,13 +30,30 @@ func Run(conf *utils.ConfigYaml) {
 		utils.CheckErrLite(err)
 		dbTablesMeta[i].Columns = res
 	}
-	fmt.Println(dbTablesMeta)
 
 	// step 2: Scan models directory for gorm struct definitions
+	var gormStructMeta []driver.TableMeta
+
 	StructRaw, err := Scan(conf)
 	utils.CheckErrLite(err)
-	gormStructMeta := parseModelStruct(StructRaw, drv)
-	differences, err := compareMetaState(dbTablesMeta, gormStructMeta)
+	gormStructMeta = parseModelStruct(StructRaw, drv)
+
+	// step3: Compare current state of metadata for database tables and gorm structures
+	funcList, err := compareMetaState(dbTablesMeta, gormStructMeta)
+	utils.CheckErrLite(err)
+	var sqlUp, sqlDown []string
+	for _, f := range funcList {
+		up, down := f(conf, drv)
+		sqlUp = append(sqlUp, up)
+		sqlDown = append(sqlDown, down)
+	}
+
+	// step 4: Write sql- Up and Down commands to file
+	if len(sqlUp) != 0 && len(sqlDown) != 0 {
+		writeToFile(conf, sqlUp, sqlDown)
+	} else {
+		fmt.Println("Gorm struct and DB tables already synchronized")
+	}
 }
 
 func parseModelStruct(data []ModelStruct, drv driver.DbHandler) []driver.TableMeta {
@@ -101,8 +118,18 @@ func parseTag(col *driver.Column, tag string) {
 	}
 }
 
-func compareMetaState(dbmeta *driver.TableMeta, gmeta *driver.TableMeta) ([]driver.TableMeta, error) {
-	fmt.Println(dbmeta)
-	fmt.Println(gmeta)
-	return []driver.TableMeta{}, nil
+func compareMetaState(dbmeta []driver.TableMeta, gmeta []driver.TableMeta) ([]func(conf *utils.ConfigYaml, drv driver.DbHandler) (string, string), error) {
+	var funcList []func(conf *utils.ConfigYaml, drv driver.DbHandler) (string, string)
+	if len(dbmeta) == 0 {
+		// return create table for all objects in gmeta
+		for _, str := range gmeta {
+			funcList = append(funcList, str.CreateTable)
+		}
+	}
+	// Not implemented
+	//var metamap map[string]driver.TableMeta
+	//for i := 0; i < len(gmeta); i++ {
+	//	metamap[(gmeta)[i].Name] = &gmeta[i]
+	//}
+	return funcList, nil
 }

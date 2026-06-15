@@ -45,6 +45,7 @@ type DbHandler interface {
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string
 	TransformDefault(val string) string
+	CreateTableStatement(conf *utils.ConfigYaml, table *TableMeta) (string, string)
 }
 
 func GetDriver(db_type string) (DbHandler, error) {
@@ -54,4 +55,8 @@ func GetDriver(db_type string) (DbHandler, error) {
 	default:
 		return nil, ErrNotFound
 	}
+}
+
+func (table *TableMeta) CreateTable(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
+	return drv.CreateTableStatement(conf, table)
 }

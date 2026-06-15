@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"text/template"
 
 	utils "github.com/fastbear1/quack/internal"
 	"github.com/jackc/pgx/v5"
@@ -27,14 +28,20 @@ var TypeConversion = map[string]string{
 }
 
 const (
-	CreateTemaplete = `CREATE TABLE "public"."{{ .TableName }}"(
-{{- range .Columns}}
-   {{.}}
+	CreateTemaplete = `{{$lenColumns := len .Columns}}CREATE TABLE "public"."{{ .Name }}"(
+{{- range $i, $a := .Columns}}
+	{{ .ColumnName }} {{ .DataType }}{{ if .IsPrimary }} PRIMARY KEY{{ end }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}{{ if not (isLast $i $lenColumns) }},{{ end }}
 {{- end}}
 );`
-	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.TableName}}";`
-	CreateColumn      = `{{ .ColName }} {{ .ColType }}{{ if .ColPrimary }} PRIMARY KEY{{ end }}{{if .UseNull}} NOT NULL{{end}}{{ if .ColDefault }} default {{ .ColDefault }}{{ end }}{{ if not .LastColumn }},{{ end }}`
+	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
+	CreateColumn      = `{{ .ColumnName }} {{ .DataType }}{{ if .IsPrimary }} PRIMARY KEY{{ end }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}{{ if not (isLast $i $lenColumns) }},{{ end }}`
 )
+
+var funcMap = template.FuncMap{
+	"isLast": func(index int, len int) bool {
+		return index+1 == len
+	},
+}
 
 type PgHandler struct{}
 
@@ -217,4 +224,37 @@ func (pg *PgHandler) TransformDefault(val string) string {
 		}
 	}
 	return defval
+}
+
+func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) (string, string) {
+	var sqlCommand bytes.Buffer
+	var sqlUp, sqlDown string
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTemaplete)
+	utils.CheckErrLite(err)
+
+	//columnTmpl, err := template.Must(masterTmpl.Clone()).Parse(CreateColumn)
+	//utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
+		fmt.Println(err)
+	}
+	sqlUp = sqlCommand.String()
+	// create down statement
+	sqlCommand.Reset()
+	deleteTmpl, err := template.New("delete").Parse(DropTableTemplate)
+	utils.CheckErrLite(err)
+
+	if err := deleteTmpl.Execute(&sqlCommand, t); err != nil {
+		fmt.Println(err)
+	}
+	sqlDown = sqlCommand.String()
+	return sqlUp, sqlDown
+}
+
+func TransformNull(nullable bool, def_val string) bool {
+	var use_null bool = false
+	if def_val == "" && !nullable {
+		use_null = true
+	}
+	return use_null
 }

@@ -77,8 +77,8 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 
 func visitFiles(conf *utils.ConfigYaml, fset *token.FileSet, files map[string]*ast.File) ([]ModelStruct, error) {
 	var models []ModelStruct
-	for filename, file := range files {
-		fmt.Printf("/* file: %s */\n", filename)
+	for _, file := range files {
+		//fmt.Printf("/* file: %s */\n", filename)
 		var structList []ModelStruct
 		structList = getStructs(conf, fset, file)
 		models = append(models, structList...)

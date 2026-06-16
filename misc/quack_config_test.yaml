@@ -1,0 +1,13 @@
+version: 0.1
+database:
+  uri: "postgres"
+  name: "test"
+  exclude:
+    - "test_table_1"
+models:
+  path: "test"
+  exclude:
+    - "Base"
+    - "Test"
+migrations:
+  path: "test"

@@ -51,7 +51,7 @@ type ConfigYaml struct {
 }
 
 func (conf *ConfigYaml) ReadConfig() error {
-	cfile, err := findConfigFile()
+	cfile, err := FindConfigFile()
 	if err != nil {
 		return err
 	}
@@ -62,16 +62,15 @@ func (conf *ConfigYaml) ReadConfig() error {
 	return err
 }
 
-func findConfigFile() ([]byte, error) {
-	cfile, err := os.ReadFile(fmt.Sprintf("./%s", configFileName))
+func FindConfigFile() ([]byte, error) {
+	cfile, err := os.ReadFile(fmt.Sprintf("../%s", configFileName))
 	if err != nil {
 		// try parent directory
-		cfile, err = os.ReadFile(fmt.Sprintf("../%s", configFileName))
+		cfile, err = os.ReadFile(fmt.Sprintf("../../%s", configFileName))
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("Found config in parent directory")
 	}
-	fmt.Println("Found config file in current directory")
+	fmt.Println("Config file found")
 	return cfile, nil
 }

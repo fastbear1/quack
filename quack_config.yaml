@@ -1,16 +1,13 @@
 version: 0.1
 database:
-  uri: "postgres://stexp:1!password!2@postgres:5432/stexp"
-  name: "stexp"
+  uri: "postgres"
+  name: "test"
   exclude:
-    - "auth_users"
-    - "users"
-    - "goose_migrations"
+    - "test_table_1"
 models:
-  path: "models"
+  path: "test"
   exclude:
     - "Base"
-    - "Users"
-    - "AuthUsers"
+    - "Test"
 migrations:
-  path: "migrations"
+  path: "test"

@@ -1,8 +1,9 @@
-package drivers
+package runner
 
 import (
 	"errors"
 
+	pg "github.com/fastbear1/quack/drivers/postgres"
 	utils "github.com/fastbear1/quack/internal"
 )
 
@@ -51,7 +52,7 @@ type DbHandler interface {
 func GetDriver(db_type string) (DbHandler, error) {
 	switch db_type {
 	case "postgres":
-		return &PgHandler{}, nil
+		return &pg.PgHandler{}, nil
 	default:
 		return nil, ErrNotFound
 	}

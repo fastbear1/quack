@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"strings"
 
-	driver "github.com/fastbear1/quack/drivers"
+	d "github.com/fastbear1/quack/drivers"
 	utils "github.com/fastbear1/quack/internal"
 )
 
 func Run(conf *utils.ConfigYaml) {
 	// step 1: check connection to database
-	var dbTablesMeta []driver.TableMeta
+	var dbTablesMeta []d.TableMeta
 
-	drv, err := driver.GetDriver(conf.Database.Type)
+	drv, err := d.GetDriver(conf.Database.Type)
 	utils.CheckErrLite(err)
 
 	dbTables, err := drv.GetTablesList(conf)
 	utils.CheckErrLite(err)
 	for _, tableName := range dbTables {
 		dbTablesMeta = append(dbTablesMeta,
-			driver.TableMeta{
+			d.TableMeta{
 				Name: tableName,
 			},
 		)
@@ -32,7 +32,7 @@ func Run(conf *utils.ConfigYaml) {
 	}
 
 	// step 2: Scan models directory for gorm struct definitions
-	var gormStructMeta []driver.TableMeta
+	var gormStructMeta []d.TableMeta
 
 	StructRaw, err := Scan(conf)
 	utils.CheckErrLite(err)
@@ -56,18 +56,18 @@ func Run(conf *utils.ConfigYaml) {
 	}
 }
 
-func parseModelStruct(data []ModelStruct, drv driver.DbHandler) []driver.TableMeta {
-	var allModels []driver.TableMeta
+func parseModelStruct(data []ModelStruct, drv d.DbHandler) []d.TableMeta {
+	var allModels []d.TableMeta
 	for _, m := range data {
-		model := driver.TableMeta{
+		model := d.TableMeta{
 			Name:       drv.TransformName(m.Name),
-			Columns:    make([]driver.Column, 0),
-			Indeces:    make([]driver.IndexMeta, 0),
-			References: make([]driver.ReferenceMeta, 0),
+			Columns:    make([]d.Column, 0),
+			Indeces:    make([]d.IndexMeta, 0),
+			References: make([]d.ReferenceMeta, 0),
 		}
 
 		for _, f := range m.Fields {
-			column := driver.Column{
+			column := d.Column{
 				ColumnName:        drv.TransformName(f.FieldName),
 				DataType:          drv.TransformType(f.FieldType),
 				IsNullable:        false,
@@ -93,7 +93,7 @@ func parseModelStruct(data []ModelStruct, drv driver.DbHandler) []driver.TableMe
 	return allModels
 }
 
-func parseTag(col *driver.Column, tag string) {
+func parseTag(col *d.Column, tag string) {
 	for _, t := range strings.Split(tag, ";") {
 		if strings.Contains(t, ":") {
 			splitval := strings.Split(t, ":")
@@ -118,8 +118,8 @@ func parseTag(col *driver.Column, tag string) {
 	}
 }
 
-func compareMetaState(dbmeta []driver.TableMeta, gmeta []driver.TableMeta) ([]func(conf *utils.ConfigYaml, drv driver.DbHandler) (string, string), error) {
-	var funcList []func(conf *utils.ConfigYaml, drv driver.DbHandler) (string, string)
+func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(conf *utils.ConfigYaml, drv d.DbHandler) (string, string), error) {
+	var funcList []func(conf *utils.ConfigYaml, drv d.DbHandler) (string, string)
 	if len(dbmeta) == 0 {
 		// return create table for all objects in gmeta
 		for _, str := range gmeta {
@@ -127,7 +127,7 @@ func compareMetaState(dbmeta []driver.TableMeta, gmeta []driver.TableMeta) ([]fu
 		}
 	}
 	// Not implemented
-	//var metamap map[string]driver.TableMeta
+	//var metamap map[string]TableMeta
 	//for i := 0; i < len(gmeta); i++ {
 	//	metamap[(gmeta)[i].Name] = &gmeta[i]
 	//}

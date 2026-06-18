@@ -63,10 +63,10 @@ func (conf *ConfigYaml) ReadConfig() error {
 }
 
 func FindConfigFile() ([]byte, error) {
-	cfile, err := os.ReadFile(fmt.Sprintf("../%s", configFileName))
+	cfile, err := os.ReadFile(fmt.Sprintf("./%s", configFileName))
 	if err != nil {
 		// try parent directory
-		cfile, err = os.ReadFile(fmt.Sprintf("../../%s", configFileName))
+		cfile, err = os.ReadFile(fmt.Sprintf("../%s", configFileName))
 		if err != nil {
 			return nil, err
 		}

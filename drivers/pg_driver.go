@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// Type definitions
+// Internla Pg type definitions
 type PgColumn struct {
 	Column_name              string
 	Data_type                string
@@ -21,12 +21,40 @@ type PgColumn struct {
 	Column_default           pgtype.Text
 }
 
-// Type conversion
+// Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
 	"uint":   "bigint",
 	"uint16": "smallint",
 }
 
+const (
+	GetTableColumnsQuery = `
+SELECT 
+	column_name, 
+	data_type, 
+	character_maximum_length, 
+	is_nullable, column_default 
+FROM information_schema.columns 
+WHERE table_name = @table`
+	FindPrimaryKeyQuery = `
+SELECT 
+	kc.constraint_name, 
+	kc.column_name 
+FROM information_schema.key_column_usage kc 
+JOIN information_schema.table_constraints tc 
+	ON kc.constraint_name = tc.constraint_name 
+WHERE tc.constraint_type = 'PRIMARY KEY' 
+	AND kc.table_name=@table`
+	GetTableNamesQuery = `
+SELECT 
+	table_name 
+FROM information_schema.tables 
+WHERE table_type='BASE TABLE' 
+	AND table_schema='public' 
+	AND table_catalog=@db`
+)
+
+// SQL templates and functions
 const (
 	CreateTemaplete = `{{$lenColumns := len .Columns}}CREATE TABLE "public"."{{ .Name }}"(
 {{- range $i, $a := .Columns}}
@@ -43,6 +71,7 @@ var funcMap = template.FuncMap{
 	},
 }
 
+// Database driver for postgres
 type PgHandler struct{}
 
 func (pg *PgHandler) GetTablesList(conf *utils.ConfigYaml) ([]string, error) {
@@ -61,10 +90,39 @@ func (pg *PgHandler) GetTablesList(conf *utils.ConfigYaml) ([]string, error) {
 	return dbtables, nil
 }
 
+func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([]string, error) {
+	var tables []string
+	rows, err := conn.Query(
+		ctx,
+		GetTableNamesQuery,
+		pgx.NamedArgs{
+			"db": conf.Database.Name,
+		},
+	)
+	defer rows.Close()
+	if err != nil {
+		fmt.Printf("Query error when getting tables list. %s", err)
+	}
+	for rows.Next() {
+		var name string
+		err := rows.Scan(&name)
+		if err != nil {
+			fmt.Println(err)
+		}
+		if utils.InArray(conf.Database.Exclude, name) {
+			fmt.Printf("Skipping table %s\n", name)
+		} else {
+			fmt.Printf("Found table %s\n", name)
+			tables = append(tables, name)
+		}
+	}
+	return tables, err
+}
+
 func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([]Column, error) {
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
-	var res []Column = []Column{}
+	var res = []Column{}
 	if err != nil {
 		return []Column{}, err
 	}
@@ -72,9 +130,7 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 
 	rows, err := conn.Query(
 		ctx,
-		`SELECT column_name, data_type, character_maximum_length, is_nullable, column_default 
-		FROM information_schema.columns 
-		WHERE table_name = @table`,
+		GetTableColumnsQuery,
 		pgx.NamedArgs{
 			"table": name,
 		},
@@ -90,14 +146,7 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 	// Find primary key field
 	rowid, err := conn.Query(
 		ctx,
-		`SELECT 
-			kc.constraint_name, 
-			kc.column_name 
-		FROM information_schema.key_column_usage kc 
-		JOIN information_schema.table_constraints tc 
-			ON kc.constraint_name = tc.constraint_name 
-		WHERE tc.constraint_type = 'PRIMARY KEY' 
-			AND kc.table_name=@table`,
+		FindPrimaryKeyQuery,
 		pgx.NamedArgs{
 			"table": name,
 		},
@@ -135,42 +184,6 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 	return res, nil
 }
 
-func normalizeCharacterVariyng(data_type string, lenght pgtype.Uint32) string {
-	if data_type == "character varying" {
-		data_type = fmt.Sprintf("varchar(%d)", lenght.Uint32)
-	}
-	return data_type
-}
-
-func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([]string, error) {
-	var tables []string
-	rows, err := conn.Query(
-		ctx,
-		"SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public' AND table_catalog=@db",
-		pgx.NamedArgs{
-			"db": conf.Database.Name,
-		},
-	)
-	defer rows.Close()
-	if err != nil {
-		fmt.Printf("Query error when getting tables list. %s", err)
-	}
-	for rows.Next() {
-		var name string
-		err := rows.Scan(&name)
-		if err != nil {
-			fmt.Println(err)
-		}
-		if utils.InArray(conf.Database.Exclude, name) {
-			fmt.Printf("Skipping table %s\n", name)
-		} else {
-			fmt.Printf("Found table %s\n", name)
-			tables = append(tables, name)
-		}
-	}
-	return tables, err
-}
-
 func (pg *PgHandler) TransformName(name string) string {
 	// Camel case to snake case
 	var buffer bytes.Buffer
@@ -191,13 +204,6 @@ func (pg *PgHandler) TransformName(name string) string {
 	return buffer.String()
 }
 
-func transformNullToString(isnull string) bool {
-	if isnull == "NO" {
-		return false
-	}
-	return true
-}
-
 func (pg *PgHandler) TransformNull(nullable bool, def_val string) bool {
 	var use_null bool = false
 	if def_val == "" && !nullable {
@@ -215,6 +221,7 @@ func (pg *PgHandler) TransformType(g_type string) string {
 }
 
 func (pg *PgHandler) TransformDefault(val string) string {
+	// skip testing, remopve this method in nmext iteration
 	defval := val
 	if defval != "" {
 		match, _ := regexp.MatchString(`(.*)\(\)(.*)`, val)
@@ -232,13 +239,11 @@ func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) 
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTemaplete)
 	utils.CheckErrLite(err)
 
-	//columnTmpl, err := template.Must(masterTmpl.Clone()).Parse(CreateColumn)
-	//utils.CheckErrLite(err)
-
 	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
 		fmt.Println(err)
 	}
 	sqlUp = sqlCommand.String()
+
 	// create down statement
 	sqlCommand.Reset()
 	deleteTmpl, err := template.New("delete").Parse(DropTableTemplate)
@@ -251,10 +256,17 @@ func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) 
 	return sqlUp, sqlDown
 }
 
-func TransformNull(nullable bool, def_val string) bool {
-	var use_null bool = false
-	if def_val == "" && !nullable {
-		use_null = true
+// helpers
+func normalizeCharacterVariyng(data_type string, lenght pgtype.Uint32) string {
+	if data_type == "character varying" {
+		data_type = fmt.Sprintf("varchar(%d)", lenght.Uint32)
 	}
-	return use_null
+	return data_type
+}
+
+func transformNullToString(isnull string) bool {
+	if isnull == "NO" {
+		return false
+	}
+	return true
 }

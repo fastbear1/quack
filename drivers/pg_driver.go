@@ -120,9 +120,9 @@ func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([
 }
 
 func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([]Column, error) {
+	var res = []Column{}
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
-	var res = []Column{}
 	if err != nil {
 		return []Column{}, err
 	}
@@ -135,6 +135,7 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 			"table": name,
 		},
 	)
+	defer rows.Close()
 	if err != nil {
 		fmt.Println("Quering table columns metadata error...")
 		return []Column{}, err
@@ -152,10 +153,9 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 		},
 	)
 	defer rowid.Close()
-
 	utils.CheckErrLite(err)
-	var pk_const_name, pk_column_name string
 
+	var pk_const_name, pk_column_name string
 	for rowid.Next() {
 		err = rowid.Scan(&pk_const_name, &pk_column_name)
 		utils.CheckErrLite(err)

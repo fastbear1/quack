@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	utils "github.com/fastbear1/quack/internal"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 )
@@ -99,6 +100,75 @@ func TestTransformNullToString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			res := transformNullToString(tt.isnull)
 			assert.Equal(t, res, tt.expect)
+		})
+	}
+}
+
+// Tests for SQL creation methods
+func TestCreaetTabelStatement(t *testing.T) {
+	// &{simple_table [{id uuid false gen_random_uuid() true } {name varchar(255) false  false } {sid smallint false  false } {email varchar(255) false  false } {status varchar(10) false active false } {name_t varchar(255) false  false } {created_at timestamp false now() false } {updated_at timestamp false now() false }] [] []}
+	var test = []struct {
+		name      string
+		tablemeta TableMeta
+		expect    []string
+	}{
+		{
+			name: "simple test for create table SQL",
+			tablemeta: TableMeta{
+				Name: "test_table",
+				Columns: []Column{
+					{
+						ColumnName:    "id",
+						DataType:      "uuid",
+						IsNullable:    false,
+						ColumnDefault: "gen_random_uuid()",
+						IsPrimary:     true,
+					},
+					{
+						ColumnName:    "name",
+						DataType:      "varchar(255)",
+						IsNullable:    false,
+						ColumnDefault: "",
+						IsPrimary:     false,
+					},
+					{
+						ColumnName:    "status",
+						DataType:      "varchar(10)",
+						IsNullable:    false,
+						ColumnDefault: "active",
+						IsPrimary:     false,
+					},
+					{
+						ColumnName:    "created_at",
+						DataType:      "timestamp",
+						IsNullable:    false,
+						ColumnDefault: "now()",
+						IsPrimary:     false,
+					},
+				},
+				Indeces:    []IndexMeta{},
+				References: []ReferenceMeta{},
+			},
+			expect: []string{
+				`CREATE TABLE "public"."test_table"(
+	id uuid PRIMARY KEY NOT NULL default gen_random_uuid(),
+	name varchar(255) NOT NULL,
+	status varchar(10) NOT NULL default active,
+	created_at timestamp NOT NULL default now()
+);`,
+				`DROP TABLE IF EXISTS "public"."test_table";`,
+			},
+		},
+	}
+
+	conf := utils.ConfigYaml{}
+	conf.ReadConfig()
+
+	for _, tt := range test {
+		t.Run(tt.name, func(t *testing.T) {
+			sqlUp, sqlDown := (&PgHandler{}).CreateTableStatement(&conf, &tt.tablemeta)
+			assert.Equal(t, sqlUp, tt.expect[0])
+			assert.Equal(t, sqlDown, tt.expect[1])
 		})
 	}
 }

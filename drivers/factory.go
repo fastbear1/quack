@@ -11,6 +11,7 @@ var ErrNotFound = errors.New("resource not found. Can't find proper database han
 type DbHandler interface {
 	GetTablesList(conf *utils.ConfigYaml) ([]string, error)
 	GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([]Column, error)
+	GetTableIndices(conf *utils.ConfigYaml, name string) ([]IndexMeta, error)
 	TransformName(name string) string
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string

@@ -45,6 +45,15 @@ JOIN information_schema.table_constraints tc
 	ON kc.constraint_name = tc.constraint_name 
 WHERE tc.constraint_type = 'PRIMARY KEY' 
 	AND kc.table_name=@table`
+	GetTableIndicesInformation = `
+SELECT indexname,indexdef 
+FROM pg_catalog.pg_indexes 
+WHERE tablename=@table 
+	AND indexname NOT IN (
+		SELECT constraint_name 
+		FROM information_schema.table_constraints 
+		WHERE table_name=@table
+);`
 	GetTableNamesQuery = `
 SELECT 
 	table_name 
@@ -144,22 +153,8 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 	if err != nil {
 		return []Column{}, err
 	}
-	// Find primary key field
-	rowid, err := conn.Query(
-		ctx,
-		FindPrimaryKeyQuery,
-		pgx.NamedArgs{
-			"table": name,
-		},
-	)
-	defer rowid.Close()
-	utils.CheckErrLite(err)
 
-	var pk_const_name, pk_column_name string
-	for rowid.Next() {
-		err = rowid.Scan(&pk_const_name, &pk_column_name)
-		utils.CheckErrLite(err)
-	}
+	pk_const_name, pk_column_name := pg.GetPrimaryKeyColumn(conn, ctx, name)
 
 	for i := 0; i < len(notes); i++ {
 		res = append(res, Column{
@@ -182,6 +177,75 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 		})
 	}
 	return res, nil
+}
+
+func (pg *PgHandler) GetPrimaryKeyColumn(conn *pgx.Conn, ctx context.Context, table_name string) (string, string) {
+	// Find primary key field
+	rowid, err := conn.Query(
+		ctx,
+		FindPrimaryKeyQuery,
+		pgx.NamedArgs{
+			"table": table_name,
+		},
+	)
+	defer rowid.Close()
+	utils.CheckErrLite(err)
+
+	var pk_const_name, pk_column_name string
+	for rowid.Next() {
+		err = rowid.Scan(&pk_const_name, &pk_column_name)
+		utils.CheckErrLite(err)
+	}
+
+	return pk_const_name, pk_column_name
+}
+
+func (pg *PgHandler) GetTableIndices(conf *utils.ConfigYaml, name string) ([]IndexMeta, error) {
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+	if err != nil {
+		return []IndexMeta{}, err
+	}
+	defer conn.Close(ctx)
+
+	row, err := conn.Query(
+		ctx,
+		GetTableIndicesInformation,
+		pgx.NamedArgs{
+			"table": name,
+		},
+	)
+	defer row.Close()
+	utils.CheckErrLite(err)
+
+	var idx_raw = [][]string{}
+	var idx_const_name, idx_const_def string
+	for row.Next() {
+		err = row.Scan(&idx_const_name, &idx_const_def)
+		utils.CheckErrLite(err)
+		idx_raw = append(idx_raw, []string{idx_const_name, idx_const_def})
+		_, err := constructIndexMetaFromString(idx_const_def)
+		utils.CheckErrLite(err)
+	}
+
+	fmt.Println(idx_raw)
+	return []IndexMeta{}, nil
+}
+
+func constructIndexMetaFromString(indexdef string) (IndexMeta, error) {
+	r := regexp.MustCompile(`CREATE (?P<Unique>UNIQUE) INDEX (?P<Name>\w+)`)
+
+	match := r.FindStringSubmatch(indexdef)
+	fmt.Printf("%#v\n", r.FindStringSubmatch(indexdef))
+	fmt.Printf("%#v\n", r.SubexpNames())
+	paramsMap := make(map[string]string)
+	for i, name := range r.SubexpNames() {
+		if i > 0 && i <= len(match) {
+			paramsMap[name] = match[i]
+		}
+	}
+	fmt.Println(paramsMap)
+	return IndexMeta{}, nil
 }
 
 func (pg *PgHandler) TransformName(name string) string {

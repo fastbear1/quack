@@ -22,9 +22,15 @@ type ReferenceMeta struct {
 }
 
 type IndexMeta struct {
-	Name        string
-	IndexColumn string
-	IndexType   string
+	Name         string
+	Columns      []string
+	IndexType    string
+	IndexClass   string
+	IndexWhere   string
+	IndexExpr    string
+	IndexSort    string
+	IndexCollate string
+	IndexOption  string
 }
 
 type TableMeta struct {

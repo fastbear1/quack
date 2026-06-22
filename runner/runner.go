@@ -15,6 +15,7 @@ func Run(conf *utils.ConfigYaml) {
 	drv, err := d.GetDriver(conf.Database.Type)
 	utils.CheckErrLite(err)
 
+	// step 1.1: get avaiable tables from database
 	dbTables, err := drv.GetTablesList(conf)
 	utils.CheckErrLite(err)
 	for _, tableName := range dbTables {
@@ -24,11 +25,16 @@ func Run(conf *utils.ConfigYaml) {
 			},
 		)
 	}
-
+	// step 1.2: get table columns meta data
 	for i := 0; i < len(dbTablesMeta); i++ {
 		res, err := drv.GetTableColumnsMeta(conf, dbTablesMeta[i].Name)
 		utils.CheckErrLite(err)
 		dbTablesMeta[i].Columns = res
+	}
+	// step 1.3: get table indices information
+	for i := 0; i < len(dbTablesMeta); i++ {
+		_, err := drv.GetTableIndices(conf, dbTablesMeta[i].Name)
+		utils.CheckErrLite(err)
 	}
 
 	// step 2: Scan models directory for gorm struct definitions

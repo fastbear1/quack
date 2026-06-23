@@ -21,16 +21,22 @@ type ReferenceMeta struct {
 	RefConstraint  string
 }
 
+type IndexOption struct {
+	Field      string
+	Expression string
+	Sort       string
+	Collate    string
+	Priority   int
+}
+
 type IndexMeta struct {
-	Name         string
-	Columns      []string
-	IndexType    string
-	IndexClass   string
-	IndexWhere   string
-	IndexExpr    string
-	IndexSort    string
-	IndexCollate string
-	IndexOption  string
+	Name    string
+	Unique  bool
+	Parsed  bool
+	Columns []IndexOption
+	Type    string
+	Where   string
+	Option  string
 }
 
 type TableMeta struct {
@@ -42,4 +48,8 @@ type TableMeta struct {
 
 func (table *TableMeta) CreateTable(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
 	return drv.CreateTableStatement(conf, table)
+}
+
+func (idx *IndexMeta) CreateIndex(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
+	return drv.CreateIndexStatement(conf, idx)
 }

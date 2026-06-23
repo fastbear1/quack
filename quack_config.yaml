@@ -4,6 +4,7 @@ database:
   name: "stexp"
   exclude:
     - "users"
+    - "auth_users"
     - "goose_migrations"
 models:
   path: "models"

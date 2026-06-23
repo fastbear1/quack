@@ -203,6 +203,8 @@ func (pg *PgHandler) GetPrimaryKeyColumn(conn *pgx.Conn, ctx context.Context, ta
 func (pg *PgHandler) GetTableIndices(conf *utils.ConfigYaml, name string) ([]IndexMeta, error) {
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+	var idxt []IndexMeta
+
 	if err != nil {
 		return []IndexMeta{}, err
 	}
@@ -218,34 +220,16 @@ func (pg *PgHandler) GetTableIndices(conf *utils.ConfigYaml, name string) ([]Ind
 	defer row.Close()
 	utils.CheckErrLite(err)
 
-	var idx_raw = [][]string{}
 	var idx_const_name, idx_const_def string
 	for row.Next() {
 		err = row.Scan(&idx_const_name, &idx_const_def)
 		utils.CheckErrLite(err)
-		idx_raw = append(idx_raw, []string{idx_const_name, idx_const_def})
-		_, err := constructIndexMetaFromString(idx_const_def)
+		idx, err := ParseDatabaseIndices(idx_const_def)
 		utils.CheckErrLite(err)
+		idxt = append(idxt, idx)
 	}
 
-	fmt.Println(idx_raw)
-	return []IndexMeta{}, nil
-}
-
-func constructIndexMetaFromString(indexdef string) (IndexMeta, error) {
-	r := regexp.MustCompile(`CREATE (?P<Unique>UNIQUE) INDEX (?P<Name>\w+)`)
-
-	match := r.FindStringSubmatch(indexdef)
-	fmt.Printf("%#v\n", r.FindStringSubmatch(indexdef))
-	fmt.Printf("%#v\n", r.SubexpNames())
-	paramsMap := make(map[string]string)
-	for i, name := range r.SubexpNames() {
-		if i > 0 && i <= len(match) {
-			paramsMap[name] = match[i]
-		}
-	}
-	fmt.Println(paramsMap)
-	return IndexMeta{}, nil
+	return idxt, nil
 }
 
 func (pg *PgHandler) TransformName(name string) string {
@@ -317,6 +301,11 @@ func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) 
 		fmt.Println(err)
 	}
 	sqlDown = sqlCommand.String()
+	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta) (string, string) {
+	var sqlUp, sqlDown string = "", ""
 	return sqlUp, sqlDown
 }
 

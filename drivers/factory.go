@@ -17,6 +17,7 @@ type DbHandler interface {
 	TransformType(g_type string) string
 	TransformDefault(val string) string
 	CreateTableStatement(conf *utils.ConfigYaml, table *TableMeta) (string, string)
+	CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta) (string, string)
 }
 
 func GetDriver(db_type string) (DbHandler, error) {

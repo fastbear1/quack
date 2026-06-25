@@ -42,11 +42,10 @@ type ModelStruct struct {
 }
 
 func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []ModelStruct {
-	// TODO: refactor this function
-	// TODO: cached structs should be a map
 	var (
 		structdef    []ModelStruct
 		cachedStruct []ModelStruct
+		//embeddStruct []string
 	)
 	for _, decl := range file.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
@@ -55,40 +54,43 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 				if structType, ok := tspec.Type.(*ast.StructType); ok {
 					structName := tspec.Name.Name
 					modelData := ModelStruct{
-						Name:            structName,
-						Fields:          make([]FieldStruct, 0),
-						EmbedFields:     make([]string, 0),
-						ReferenceFields: make([]FieldStruct, 0),
+						Name:   structName,
+						Fields: make([]FieldStruct, 0),
 					}
 					var fieldData FieldStruct
 
 					for _, field := range structType.Fields.List {
 						if len(field.Names) > 0 {
 							fieldData.FieldName = field.Names[0].String()
-
-							if r, ok := field.Type.(*ast.Ident); ok {
-								// FK column declaration
-								var refField = FieldStruct{}
-								refField.FieldName = field.Names[0].String()
-								refField.FieldType = r.Name
-								if field.Tag != nil {
-									refField.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
-								}
-								modelData.ReferenceFields = append(modelData.ReferenceFields, refField)
-							} else {
-								fieldData.FieldType = mustFormatNode(fset, field.Type)
-								if field.Tag != nil {
-									fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
-								}
-								modelData.Fields = append(modelData.Fields, fieldData)
-							}
 						} else {
-							// Anonymous embed field
-							if r, ok := field.Type.(*ast.Ident); ok {
-								modelData.EmbedFields = append(modelData.EmbedFields, r.Name)
-							}
+							// Embedded field
+							//fmt.Println(field.Type)
+							//typeName := field.Type
+							//embeddStruct = append(embeddStruct, typeName)
 							continue
 						}
+
+						fmt.Printf("%T\n", field.Type)
+						if r, ok := field.Type.(*ast.Ident); ok {
+							fmt.Println("========== ast.Ident ============")
+							fmt.Println(r.Name, r.NamePos)
+							fmt.Printf("%+v\n", r.Obj)
+							fmt.Println("==============================")
+						}
+						/*
+							if k, ok := field.Type.(*ast.SelectorExpr); ok {
+								fmt.Println("========== ast.SelectorExpr ============")
+								fmt.Println(k.Sel, k.X)
+								fmt.Printf("%+v\n", k.Sel.Name)
+								fmt.Println("==============================")
+							}
+						*/
+
+						fieldData.FieldType = mustFormatNode(fset, field.Type)
+						if field.Tag != nil {
+							fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+						}
+						modelData.Fields = append(modelData.Fields, fieldData)
 					}
 
 					if utils.InArray(conf.Models.Exclude, structName) {
@@ -100,8 +102,6 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 			}
 		}
 	}
-	fmt.Printf("Structs %+v\n", structdef)
-	fmt.Println("Cached %+v\n", cachedStruct)
 	return structdef
 }
 

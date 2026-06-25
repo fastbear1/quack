@@ -4,13 +4,11 @@ database:
   name: "stexp"
   exclude:
     - "users"
-    - "auth_users"
     - "goose_migrations"
 models:
   path: "models"
   exclude:
     - "Base"
     - "Users"
-    - "AuthUsers"
 migrations:
   path: "migrations"

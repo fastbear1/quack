@@ -14,11 +14,11 @@ type Column struct {
 }
 
 type ReferenceMeta struct {
-	Name           string
-	RefColumn      string
-	RefTable       string
-	RefTableColumn string
-	RefConstraint  string
+	Name       string
+	Column     string
+	RefTable   string
+	RefColumn  string
+	RefOptions string
 }
 
 type IndexOption struct {

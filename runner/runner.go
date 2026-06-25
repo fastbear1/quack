@@ -36,6 +36,10 @@ func Run(conf *utils.ConfigYaml) {
 		idx, err := drv.GetTableIndices(conf, dbTablesMeta[i].Name)
 		utils.CheckErrLite(err)
 		dbTablesMeta[i].Indeces = idx
+		// step 1.4: get table references
+		ref, err := drv.GetTableReferences(conf, dbTablesMeta[i].Name)
+		utils.CheckErrLite(err)
+		dbTablesMeta[i].References = ref
 	}
 
 	// step 2: Scan models directory for gorm struct definitions
@@ -52,9 +56,14 @@ func Run(conf *utils.ConfigYaml) {
 			index := parseIndicesTag(gsmeta.Name, f.FieldName, f.FieldTag)
 			gsmeta.Indeces = append(gsmeta.Indeces, index)
 		}
+		// step 2.3: parse FK and embed strcuture
+		for _, f := range StructRaw[i].Fields {
+			reference := parseReferenceEmbedStructs(f.FieldName)
+			gsmeta.References = append(gsmeta.References, reference)
+		}
 		gormStructMeta = append(gormStructMeta, gsmeta)
 	}
-	fmt.Printf("%+v\n", gormStructMeta)
+	//fmt.Printf("%+v\n", gormStructMeta)
 
 	// step3: Compare current state of metadata for database tables and gorm structures
 	funcList, err := compareMetaState(dbTablesMeta, gormStructMeta)
@@ -188,6 +197,10 @@ func parseIndicesTag(table string, column string, tag string) d.IndexMeta {
 		}
 	}
 	return idxmeta
+}
+
+func parseReferenceEmbedStructs(name string) d.ReferenceMeta {
+	return d.ReferenceMeta{}
 }
 
 func ParseTagSetting(str string, sep string) map[string]string {

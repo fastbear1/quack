@@ -69,3 +69,28 @@ func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {
 	}
 	return IndexMeta, nil
 }
+
+func ParseDatabaseReferences(refname string, refdef string) (ReferenceMeta, error) {
+	pattern := `FOREIGN KEY \((?<Column>\w+)\) REFERENCES (?<Reftable>\w+)\((?<Refcolumn>\w+)\)(?<Refoptions> .*)`
+
+	r := regexp.MustCompile(pattern)
+
+	type paramsMap map[string]string
+
+	ref := make(paramsMap, 0)
+	match := r.FindStringSubmatch(refdef)
+	for i, name := range r.SubexpNames() {
+		if i > 0 && i <= len(match) {
+			ref[name] = match[i]
+		}
+	}
+
+	var refmeta = ReferenceMeta{
+		Name:       refname,
+		Column:     ref["Column"],
+		RefTable:   ref["Reftable"],
+		RefColumn:  ref["Refcolumn"],
+		RefOptions: ref["Refoptions"],
+	}
+	return refmeta, nil
+}

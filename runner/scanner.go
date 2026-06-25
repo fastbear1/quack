@@ -35,23 +35,27 @@ type FieldStruct struct {
 }
 
 type ModelStruct struct {
-	Name   string
-	Fields []FieldStruct
+	Name            string
+	Fields          []FieldStruct
+	EmbedFields     []string
+	ReferenceFields []FieldStruct
 }
 
 func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []ModelStruct {
-	var structdef []ModelStruct
+	var (
+		structdef    []ModelStruct
+		cachedStruct []ModelStruct
+		embeddStruct []string
+	)
 	for _, decl := range file.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
 			for _, spec := range genDecl.Specs {
 				tspec := spec.(*ast.TypeSpec)
 				if structType, ok := tspec.Type.(*ast.StructType); ok {
 					structName := tspec.Name.Name
-					if utils.InArray(conf.Models.Exclude, structName) {
-						continue
-					}
 					modelData := ModelStruct{
-						Name: structName,
+						Name:   structName,
+						Fields: make([]FieldStruct, 0),
 					}
 					var fieldData FieldStruct
 
@@ -59,15 +63,40 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 						if len(field.Names) > 0 {
 							fieldData.FieldName = field.Names[0].String()
 						} else {
-							fieldData.FieldName = "Embed field"
+							// Embedded field
+							typeName := field.Type
+							embeddStruct = append(embeddStruct, typeName)
+							continue
 						}
+
+						/*
+							fmt.Printf("%T\n", field.Type)
+							if r, ok := field.Type.(*ast.Ident); ok {
+								fmt.Println("========== ast.Ident ============")
+								fmt.Println(r.Name, r.NamePos)
+								fmt.Printf("%+v\n", r.Obj)
+								fmt.Println("==============================")
+							}
+							if k, ok := field.Type.(*ast.SelectorExpr); ok {
+								fmt.Println("========== ast.SelectorExpr ============")
+								fmt.Println(k.Sel, k.X)
+								fmt.Printf("%+v\n", k.Sel.Name)
+								fmt.Println("==============================")
+							}
+						*/
+
 						fieldData.FieldType = mustFormatNode(fset, field.Type)
 						if field.Tag != nil {
 							fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
 						}
 						modelData.Fields = append(modelData.Fields, fieldData)
 					}
-					structdef = append(structdef, modelData)
+
+					if utils.InArray(conf.Models.Exclude, structName) {
+						cachedStruct = append(cachedStruct, modelData)
+					} else {
+						structdef = append(structdef, modelData)
+					}
 				}
 			}
 		}
@@ -114,105 +143,3 @@ func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 	// Visit all files and collect struct definitions.
 	return visitFiles(conf, fset, files)
 }
-
-/*
-func parseFieldIndexes(field *Field) (indexes []Index, err error) {
-	for _, value := range strings.Split(field.Tag.Get("gorm"), ";") {
-		if value != "" {
-			v := strings.Split(value, ":")
-			k := strings.TrimSpace(strings.ToUpper(v[0]))
-			if k == "INDEX" || k == "UNIQUEINDEX" {
-				var (
-					name       string
-					tag        = strings.Join(v[1:], ":")
-					idx        = strings.IndexByte(tag, ',')
-					tagSetting = strings.Join(strings.Split(tag, ",")[1:], ",")
-					settings   = ParseTagSetting(tagSetting, ",")
-					length, _  = strconv.Atoi(settings["LENGTH"])
-				)
-
-				if idx == -1 {
-					idx = len(tag)
-				}
-
-				name = tag[0:idx]
-				if name == "" {
-					subName := field.Name
-					const key = "COMPOSITE"
-					if composite, found := settings[key]; found {
-						if len(composite) == 0 || composite == key {
-							err = fmt.Errorf(
-								"the composite tag of %s.%s cannot be empty",
-								field.Schema.Name,
-								field.Name)
-							return
-						}
-						subName = composite
-					}
-					name = field.Schema.namer.IndexName(
-						field.Schema.Table, subName)
-				}
-
-				if (k == "UNIQUEINDEX") || settings["UNIQUE"] != "" {
-					settings["CLASS"] = "UNIQUE"
-				}
-
-				priority, err := strconv.Atoi(settings["PRIORITY"])
-				if err != nil {
-					priority = 10
-				}
-
-				indexes = append(indexes, Index{
-					Name:    name,
-					Class:   settings["CLASS"],
-					Type:    settings["TYPE"],
-					Where:   settings["WHERE"],
-					Comment: settings["COMMENT"],
-					Option:  settings["OPTION"],
-					Fields: []IndexOption{{
-						Field:      field,
-						Expression: settings["EXPRESSION"],
-						Sort:       settings["SORT"],
-						Collate:    settings["COLLATE"],
-						Length:     length,
-						Priority:   priority,
-					}},
-				})
-			}
-		}
-	}
-
-	err = nil
-	return
-}
-
-
-func ParseTagSetting(str string, sep string) map[string]string {
-	settings := map[string]string{}
-	names := strings.Split(str, sep)
-
-	var parsedNames []string
-	for i := 0; i < len(names); i++ {
-		s := names[i]
-		for strings.HasSuffix(s, "\\") && i+1 < len(names) {
-			i++
-			s = s[:len(s)-1] + sep + names[i]
-		}
-		parsedNames = append(parsedNames, s)
-	}
-
-	for _, tag := range parsedNames {
-		values := strings.Split(tag, ":")
-		k := strings.TrimSpace(strings.ToUpper(values[0]))
-		if len(values) >= 2 {
-			val := strings.Join(values[1:], ":")
-			val = strings.ReplaceAll(val, `\"`, `"`)
-			settings[k] = val
-		} else if k != "" {
-			settings[k] = k
-		}
-	}
-
-	return settings
-}
-*/

@@ -46,7 +46,9 @@ JOIN information_schema.table_constraints tc
 WHERE tc.constraint_type = 'PRIMARY KEY' 
 	AND kc.table_name=@table`
 	GetTableIndicesInformation = `
-SELECT indexname,indexdef 
+SELECT 
+	indexname,
+	indexdef 
 FROM pg_catalog.pg_indexes 
 WHERE tablename=@table 
 	AND indexname NOT IN (
@@ -61,6 +63,15 @@ FROM information_schema.tables
 WHERE table_type='BASE TABLE' 
 	AND table_schema='public' 
 	AND table_catalog=@db`
+	GetTableForeignKeys = `
+SELECT 
+	conname, 
+	pg_get_constraintdef(oid) 
+FROM pg_constraint
+WHERE contype IN ('f', 'p ')
+	AND pg_get_constraintdef(oid) LIKE 'FOREIGN KEY %' 
+	AND conrelid::regclass::text = @table;
+`
 )
 
 // SQL templates and functions
@@ -230,6 +241,38 @@ func (pg *PgHandler) GetTableIndices(conf *utils.ConfigYaml, name string) ([]Ind
 	}
 
 	return idxt, nil
+}
+
+func (pg *PgHandler) GetTableReferences(conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error) {
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+	var ref []ReferenceMeta
+
+	if err != nil {
+		return []ReferenceMeta{}, err
+	}
+	defer conn.Close(ctx)
+
+	row, err := conn.Query(
+		ctx,
+		GetTableForeignKeys,
+		pgx.NamedArgs{
+			"table": name,
+		},
+	)
+	defer row.Close()
+	utils.CheckErrLite(err)
+
+	var ref_name, ref_const_def string
+	for row.Next() {
+		err = row.Scan(&ref_name, &ref_const_def)
+		utils.CheckErrLite(err)
+		res, err := ParseDatabaseReferences(ref_name, ref_const_def)
+		utils.CheckErrLite(err)
+		ref = append(ref, res)
+	}
+
+	return ref, nil
 }
 
 func (pg *PgHandler) TransformName(name string) string {

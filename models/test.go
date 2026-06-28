@@ -39,12 +39,14 @@ type AuthUsers struct {
 }
 
 type SimpleTable struct {
-	ID        uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	Name      string    `gorm:"type:varchar(255);not null"`
-	SID       uint16    `gorm:"index;not null"`
-	Email     string    `gorm:"type:varchar(255);not null"`
+	ID    uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	Name  string    `gorm:"type:varchar(255);not null"`
+	SID   uint16    `gorm:"index;not null"`
+	Email string    `gorm:"type:varchar(255);not null"`
+	//UserID    uuid.UUID `gorm:"type:uuid;not null"`
 	Status    string    `gorm:"type:varchar(10);default:active"`
 	NameT     string    `gorm:"type:varchar(255);not null"`
 	CreatedAt time.Time `gorm:"type:timestamp;not null;default:now();<-:create"`
 	UpdatedAt time.Time `gorm:"type:timestamp;not null;default:now()"`
+	//Users     Users     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE,OnUpdate:SET NULL;"`
 }

@@ -65,8 +65,6 @@ func Run(conf *utils.ConfigYaml) {
 		gormStructMeta = append(gormStructMeta, gsmeta)
 	}
 
-	fmt.Println(utils.PrettyPrint(gormStructMeta))
-	fmt.Println(utils.PrettyPrint(dbTablesMeta))
 	// step3: Compare current state of metadata for database tables and gorm structures
 	funcList, err := compareMetaState(dbTablesMeta, gormStructMeta)
 	utils.CheckErrLite(err)
@@ -296,7 +294,7 @@ func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, 
 		//fk_TableName_ReferenceTableName_ForeignKeyColumn_ReferenceColumn
 		ref.Name = "fk_" + drv.TransformName(table) + "_" +
 			drv.TransformName(reftable) + "_" +
-			drv.TransformName(ref.Column) + "_" +
+			ref.Column + "_" +
 			drv.TransformName(ref.RefColumn)
 	}
 	return ref
@@ -317,12 +315,11 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(conf *u
 		// return create table for all objects in gmeta
 		for _, str := range gmeta {
 			funcList = append(funcList, str.CreateTable)
+			for _, i := range str.Indeces {
+				funcList = append(funcList, i.CreateIndex)
+			}
 		}
 	}
 	// Not implemented
-	//var metamap map[string]TableMeta
-	//for i := 0; i < len(gmeta); i++ {
-	//	metamap[(gmeta)[i].Name] = &gmeta[i]
-	//}
 	return funcList, nil
 }

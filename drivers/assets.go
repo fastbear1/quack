@@ -53,3 +53,7 @@ func (table *TableMeta) CreateTable(conf *utils.ConfigYaml, drv DbHandler) (stri
 func (idx *IndexMeta) CreateIndex(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
 	return drv.CreateIndexStatement(conf, idx)
 }
+
+func (ref *ReferenceMeta) CreateConstraint(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
+	return drv.CreateConstraintStatement(conf, ref)
+}

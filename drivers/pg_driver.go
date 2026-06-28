@@ -76,13 +76,20 @@ WHERE contype IN ('f', 'p ')
 
 // SQL templates and functions
 const (
-	CreateTemaplete = `{{$lenColumns := len .Columns}}CREATE TABLE "public"."{{ .Name }}"(
+	CreateTemaplete = `{{$lenColumns := len .Columns}}{{$lenRef := len .References}}CREATE TABLE "public"."{{ .Name }}"(
 {{- range $i, $a := .Columns}}
-	{{ .ColumnName }} {{ .DataType }}{{ if .IsPrimary }} PRIMARY KEY{{ end }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}{{ if not (isLast $i $lenColumns) }},{{ end }}
+	{{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }},
+{{- end}}
+	{{ if .PrimaryColumn }}PRIMARY KEY ("{{.PrimaryColumn}}"){{ end }}{{ if .References }},{{end}}
+{{- range $i, $a := .References}}
+	CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{.RefColumn}}"){{if .RefOptions}} {{.RefOptions}}{{end}}{{ if not (isLast $i $lenRef) }},{{ end }}
 {{- end}}
 );`
 	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
 	CreateColumn      = `{{ .ColumnName }} {{ .DataType }}{{ if .IsPrimary }} PRIMARY KEY{{ end }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}{{ if not (isLast $i $lenColumns) }},{{ end }}`
+	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} {{.Type}} {{.Expression}}({{.Columns}});`
+	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
+	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{RefColumn}}"){{if .RefOptions}}{{.RefOptions}}{{end}}`
 )
 
 var funcMap = template.FuncMap{
@@ -327,7 +334,22 @@ func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) 
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTemaplete)
 	utils.CheckErrLite(err)
 
-	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
+	// find primary column
+	primary := ""
+	for _, c := range t.Columns {
+		if c.IsPrimary {
+			primary = c.ColumnName
+		}
+	}
+	var ft = struct {
+		PrimaryColumn string
+		*TableMeta
+	}{
+		primary,
+		t,
+	}
+
+	if err := masterTmpl.Execute(&sqlCommand, ft); err != nil {
 		fmt.Println(err)
 	}
 	sqlUp = sqlCommand.String()
@@ -345,6 +367,46 @@ func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) 
 }
 
 func (pg *PgHandler) CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta) (string, string) {
+	var sqlCommand bytes.Buffer
+	var sqlUp, sqlDown string
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndex)
+	utils.CheckErrLite(err)
+
+	var t = struct {
+		TableName  string
+		Name       string
+		Unique     bool
+		Type       string
+		Expression string
+		Columns    string
+	}{
+		idx.Name,
+		idx.Name,
+		idx.Unique,
+		idx.Type,
+		idx.Columns[0].Expression,
+		idx.Columns[0].Field,
+	}
+
+	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
+		fmt.Println(err)
+	}
+	sqlUp = sqlCommand.String()
+
+	// create down statement
+	sqlCommand.Reset()
+	deleteTmpl, err := template.New("delete").Parse(DropIndex)
+	utils.CheckErrLite(err)
+
+	if err := deleteTmpl.Execute(&sqlCommand, idx); err != nil {
+		fmt.Println(err)
+	}
+	sqlDown = sqlCommand.String()
+
+	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) CreateConstraintStatement(conf *utils.ConfigYaml, ref *ReferenceMeta) (string, string) {
 	var sqlUp, sqlDown string = "", ""
 	return sqlUp, sqlDown
 }

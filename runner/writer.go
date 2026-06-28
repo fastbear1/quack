@@ -17,14 +17,14 @@ func writeToFile(conf *utils.ConfigYaml, sqlUp []string, sqlDown []string) {
 	_, err = w.WriteString("-- +goose Up\n")
 	utils.CheckErrLite(err)
 	for i := 0; i < len(sqlUp); i++ {
-		_, err = w.WriteString(sqlUp[i])
+		_, err = w.WriteString(sqlUp[i] + "\n")
 		utils.CheckErrLite(err)
 	}
 	_, err = w.WriteString("\n")
 	_, err = w.WriteString("-- +goose Down\n")
 	utils.CheckErrLite(err)
 	for i := 0; i < len(sqlDown); i++ {
-		_, err = w.WriteString(sqlDown[i])
+		_, err = w.WriteString(sqlDown[i] + "\n")
 		utils.CheckErrLite(err)
 	}
 	w.Flush()

@@ -5,10 +5,12 @@ database:
   exclude:
     - "users"
     - "goose_migrations"
+    - "auth_users"
 models:
   path: "models"
   exclude:
     - "Base"
     - "Users"
+    - "AuthUsers"
 migrations:
   path: "migrations"

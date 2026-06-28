@@ -53,7 +53,7 @@ func Run(conf *utils.ConfigYaml) {
 		gsmeta := parseModelStruct(StructRaw[i], drv)
 		// step 2.2: parse gorm index information
 		for _, f := range StructRaw[i].Fields {
-			if index, ok := parseIndicesTag(gsmeta.Name, f.FieldName, f.FieldTag); ok {
+			if index, ok := parseIndicesTag(gsmeta.Name, drv.TransformName(f.FieldName), f.FieldTag); ok {
 				gsmeta.Indeces = append(gsmeta.Indeces, index)
 			}
 		}
@@ -66,6 +66,7 @@ func Run(conf *utils.ConfigYaml) {
 	}
 
 	fmt.Println(utils.PrettyPrint(gormStructMeta))
+	fmt.Println(utils.PrettyPrint(dbTablesMeta))
 	// step3: Compare current state of metadata for database tables and gorm structures
 	funcList, err := compareMetaState(dbTablesMeta, gormStructMeta)
 	utils.CheckErrLite(err)
@@ -112,6 +113,9 @@ func parseModelStruct(data ModelStruct, drv d.DbHandler) d.TableMeta {
 				fmt.Printf("Not found any tag for field %s in struct %s\n", f.FieldName, data.Name)
 			}
 		}
+		if column.ColumnDefault != "" {
+			column.ColumnDefault = drv.TransformDefault(column.DataType, column.ColumnDefault)
+		}
 		model.Columns = append(model.Columns, column)
 	}
 	return model
@@ -147,12 +151,18 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 		idxmeta  d.IndexMeta = d.IndexMeta{}
 		idxfound bool        = false
 	)
+	tag = strings.TrimPrefix(tag, "gorm:")
+	tag = tag[1 : len(tag)-1]
+
 	for _, value := range strings.Split(tag, ";") {
 		if value != "" {
+			if strings.Contains(value, "primary_key") {
+				// Skip primary keys indices
+				continue
+			}
 			v := strings.Split(value, ":")
 			k := strings.TrimSpace(v[0])
 			if k == "index" || k == "uniqueindex" {
-				fmt.Println(tag)
 				var (
 					name       string
 					tag        = strings.Join(v[1:], ":")
@@ -167,19 +177,20 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 
 				name = tag[0:idx]
 				if name == "" {
-					name = fmt.Sprintf("idx_%s_%s", table, column)
+					name = createIndexName(table, []string{column}, settings["EXPRESSION"])
 				}
-
 				uniqidx := false
 				if (k == "UNIQUEINDEX") || settings["UNIQUE"] != "" {
 					uniqidx = true
 				}
-
 				priority, err := strconv.Atoi(settings["PRIORITY"])
 				if err != nil {
 					priority = 10
 				}
-
+				if settings["TYPE"] == "" {
+					//TODO: set drier default index type
+					settings["TYPE"] = "btree"
+				}
 				idxmeta = d.IndexMeta{
 					Name:   name,
 					Unique: uniqidx,
@@ -231,6 +242,21 @@ func ParseTagSetting(str string, sep string) map[string]string {
 	return settings
 }
 
+func createIndexName(table string, columns []string, exp string) string {
+	indexName := "idx_"
+	columnsSuffix := ""
+	expSuffix := ""
+	if exp != "" {
+		expParts := strings.Split(exp, "(")
+		expSuffix += fmt.Sprintf("_%s", expParts[0])
+	}
+	for _, c := range columns {
+		columnsSuffix += fmt.Sprintf("_%s", c)
+	}
+	indexName += table + columnsSuffix + expSuffix
+	return indexName
+}
+
 func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, tag string) d.ReferenceMeta {
 	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
 	var ref = d.ReferenceMeta{}
@@ -277,6 +303,7 @@ func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, 
 }
 
 func transformAction(action string) string {
+	// TODO: driver depend function, delegate transformation to driver
 	defaction := "ON DELETE"
 	if action == "OnUpdate" {
 		defaction = "ON UPDATE"

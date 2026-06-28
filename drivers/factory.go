@@ -16,7 +16,7 @@ type DbHandler interface {
 	TransformName(name string) string
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string
-	TransformDefault(val string) string
+	TransformDefault(col_type string, val string) string
 	CreateTableStatement(conf *utils.ConfigYaml, table *TableMeta) (string, string)
 	CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta) (string, string)
 }

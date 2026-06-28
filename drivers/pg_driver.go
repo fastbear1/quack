@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"regexp"
+	"strings"
 	"text/template"
 
 	utils "github.com/fastbear1/quack/internal"
@@ -311,17 +311,14 @@ func (pg *PgHandler) TransformType(g_type string) string {
 	return tp
 }
 
-func (pg *PgHandler) TransformDefault(val string) string {
-	// skip testing, remopve this method in nmext iteration
-	defval := val
-	if defval != "" {
-		match, _ := regexp.MatchString(`(.*)\(\)(.*)`, val)
-		if !match {
-			// should inherit column type
-			defval = fmt.Sprintf("'%s'", val)
-		}
+func (pg *PgHandler) TransformDefault(columnType string, columnDefault string) string {
+	defValue := columnDefault
+	columnType = strings.Split(columnType, "(")[0]
+	switch columnType {
+	case "varchar":
+		defValue = fmt.Sprintf("'%s'::text", defValue)
 	}
-	return defval
+	return defValue
 }
 
 func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) (string, string) {

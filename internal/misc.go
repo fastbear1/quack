@@ -1,6 +1,9 @@
 package utils
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 func InArray(s []string, el string) bool {
 	for _, v := range s {
@@ -15,4 +18,9 @@ func CheckErrLite(err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func PrettyPrint(i any) string {
+	s, _ := json.MarshalIndent(i, "", "   ")
+	return string(s)
 }

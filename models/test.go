@@ -14,12 +14,14 @@ const (
 	Pending  Status = "pending"
 )
 
+/*
 type Base struct {
 	ID uuid.UUID `gorm:"index;type:uuid;primary_key;default:gen_random_uuid()"`
 	// Test comment
 	CreatedAt time.Time `gorm:"type:timestamp;not null;default:now();<-:create"`
 	UpdatedAt time.Time `gorm:"type:timestamp;not null;default:now()"`
 }
+*/
 
 type Users struct {
 	Base
@@ -33,7 +35,7 @@ type AuthUsers struct {
 	UserID   uuid.UUID `gorm:"type:uuid;not null"`
 	Password string    `gorm:"type:text;not null"`
 	// Constraints
-	Users Users `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
+	Users Users `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE,OnUpdate:SET NULL;"`
 }
 
 type SimpleTable struct {

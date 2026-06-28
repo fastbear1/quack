@@ -41,12 +41,24 @@ type ModelStruct struct {
 	ReferenceFields []FieldStruct
 }
 
-func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []ModelStruct {
+func collectEmbedFileds(data []ModelStruct, cache map[string]ModelStruct) []ModelStruct {
+	for i := 0; i < len(data); i++ {
+		for j := 0; j < len(data[i].EmbedFields); j++ {
+			if model, exist := cache[data[i].EmbedFields[j]]; exist {
+				data[i].Fields = append(model.Fields, data[i].Fields...)
+				//data[i].EmbedFields = []string{}
+			}
+		}
+	}
+	return data
+}
+
+func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) ([]ModelStruct, map[string]ModelStruct) {
 	// TODO: refactor this function
 	// TODO: cached structs should be a map
 	var (
 		structdef    []ModelStruct
-		cachedStruct []ModelStruct
+		cachedStruct = make(map[string]ModelStruct)
 	)
 	for _, decl := range file.Decls {
 		if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
@@ -66,7 +78,7 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 						if len(field.Names) > 0 {
 							fieldData.FieldName = field.Names[0].String()
 
-							if r, ok := field.Type.(*ast.Ident); ok {
+							if r, ok := field.Type.(*ast.Ident); ok && r.Obj != nil {
 								// FK column declaration
 								var refField = FieldStruct{}
 								refField.FieldName = field.Names[0].String()
@@ -92,7 +104,7 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 					}
 
 					if utils.InArray(conf.Models.Exclude, structName) {
-						cachedStruct = append(cachedStruct, modelData)
+						cachedStruct[structName] = modelData
 					} else {
 						structdef = append(structdef, modelData)
 					}
@@ -100,19 +112,21 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) []M
 			}
 		}
 	}
-	fmt.Printf("Structs %+v\n", structdef)
-	fmt.Println("Cached %+v\n", cachedStruct)
-	return structdef
+	return structdef, cachedStruct
 }
 
 func visitFiles(conf *utils.ConfigYaml, fset *token.FileSet, files map[string]*ast.File) ([]ModelStruct, error) {
 	var models []ModelStruct
+	var cached = make(map[string]ModelStruct)
 	for _, file := range files {
-		//fmt.Printf("/* file: %s */\n", filename)
 		var structList []ModelStruct
-		structList = getStructs(conf, fset, file)
+		structList, cacheList := getStructs(conf, fset, file)
 		models = append(models, structList...)
+		for k, v := range cacheList {
+			cached[k] = v
+		}
 	}
+	models = collectEmbedFileds(models, cached)
 	return models, nil
 }
 

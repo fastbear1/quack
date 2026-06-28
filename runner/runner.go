@@ -53,18 +53,19 @@ func Run(conf *utils.ConfigYaml) {
 		gsmeta := parseModelStruct(StructRaw[i], drv)
 		// step 2.2: parse gorm index information
 		for _, f := range StructRaw[i].Fields {
-			index := parseIndicesTag(gsmeta.Name, f.FieldName, f.FieldTag)
-			gsmeta.Indeces = append(gsmeta.Indeces, index)
+			if index, ok := parseIndicesTag(gsmeta.Name, f.FieldName, f.FieldTag); ok {
+				gsmeta.Indeces = append(gsmeta.Indeces, index)
+			}
 		}
 		// step 2.3: parse FK and embed strcuture
-		for _, f := range StructRaw[i].Fields {
-			reference := parseReferenceEmbedStructs(f.FieldName)
+		for _, f := range StructRaw[i].ReferenceFields {
+			reference := parseReferenceEmbedStructs(drv, StructRaw[i].Name, f.FieldType, f.FieldTag)
 			gsmeta.References = append(gsmeta.References, reference)
 		}
 		gormStructMeta = append(gormStructMeta, gsmeta)
 	}
-	//fmt.Printf("%+v\n", gormStructMeta)
 
+	fmt.Println(utils.PrettyPrint(gormStructMeta))
 	// step3: Compare current state of metadata for database tables and gorm structures
 	funcList, err := compareMetaState(dbTablesMeta, gormStructMeta)
 	utils.CheckErrLite(err)
@@ -141,13 +142,17 @@ func parseTag(col *d.Column, tag string) {
 	}
 }
 
-func parseIndicesTag(table string, column string, tag string) d.IndexMeta {
-	var idxmeta d.IndexMeta = d.IndexMeta{}
+func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool) {
+	var (
+		idxmeta  d.IndexMeta = d.IndexMeta{}
+		idxfound bool        = false
+	)
 	for _, value := range strings.Split(tag, ";") {
 		if value != "" {
 			v := strings.Split(value, ":")
 			k := strings.TrimSpace(v[0])
 			if k == "index" || k == "uniqueindex" {
+				fmt.Println(tag)
 				var (
 					name       string
 					tag        = strings.Join(v[1:], ":")
@@ -155,9 +160,6 @@ func parseIndicesTag(table string, column string, tag string) d.IndexMeta {
 					tagSetting = strings.Join(strings.Split(tag, ",")[1:], ",")
 					settings   = ParseTagSetting(tagSetting, ",")
 				)
-				fmt.Println(tag)
-				fmt.Println(idx)
-				fmt.Println(tagSetting)
 
 				if idx == -1 {
 					idx = len(tag)
@@ -193,14 +195,11 @@ func parseIndicesTag(table string, column string, tag string) d.IndexMeta {
 						Priority:   priority,
 					}},
 				}
+				idxfound = true
 			}
 		}
 	}
-	return idxmeta
-}
-
-func parseReferenceEmbedStructs(name string) d.ReferenceMeta {
-	return d.ReferenceMeta{}
+	return idxmeta, idxfound
 }
 
 func ParseTagSetting(str string, sep string) map[string]string {
@@ -230,6 +229,59 @@ func ParseTagSetting(str string, sep string) map[string]string {
 	}
 
 	return settings
+}
+
+func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, tag string) d.ReferenceMeta {
+	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
+	var ref = d.ReferenceMeta{}
+	tag = strings.TrimPrefix(tag, "gorm:")
+	tag = tag[1 : len(tag)-1]
+	for _, value := range strings.Split(tag, ";") {
+		if value != "" {
+			v := strings.Split(value, ":")
+			k := strings.TrimSpace(v[0])
+			switch k {
+			case "referenceName":
+				ref.Name = v[1]
+			case "foreignKey":
+				ref.Column = drv.TransformName(v[1])
+			case "references":
+				ref.RefColumn = drv.TransformName(v[1])
+			case "constraint":
+				ref.RefOptions = ""
+				constr := strings.Join(v[1:], ":")
+				constParts := strings.Split(constr, ",")
+				for i, c := range constParts {
+					if i > 0 {
+						ref.RefOptions += " "
+					}
+					action := strings.Split(c, ":")
+					constrAction := transformAction(string(action[0]))
+					ref.RefOptions += strings.ToUpper(constrAction) + " " + strings.ToUpper(string(action[1]))
+				}
+			}
+		}
+	}
+	ref.RefTable = drv.TransformName(reftable)
+	if ref.RefColumn == "" {
+		ref.RefColumn = "id"
+	}
+	if ref.Name == "" {
+		//fk_TableName_ReferenceTableName_ForeignKeyColumn_ReferenceColumn
+		ref.Name = "fk_" + drv.TransformName(table) + "_" +
+			drv.TransformName(reftable) + "_" +
+			drv.TransformName(ref.Column) + "_" +
+			drv.TransformName(ref.RefColumn)
+	}
+	return ref
+}
+
+func transformAction(action string) string {
+	defaction := "ON DELETE"
+	if action == "OnUpdate" {
+		defaction = "ON UPDATE"
+	}
+	return defaction
 }
 
 func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(conf *utils.ConfigYaml, drv d.DbHandler) (string, string), error) {

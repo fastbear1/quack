@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	utils "github.com/fastbear1/quack/internal"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 )
@@ -151,22 +150,20 @@ func TestCreaetTabelStatement(t *testing.T) {
 			},
 			expect: []string{
 				`CREATE TABLE "public"."test_table"(
-	id uuid PRIMARY KEY NOT NULL default gen_random_uuid(),
+	id uuid NOT NULL default gen_random_uuid(),
 	name varchar(255) NOT NULL,
 	status varchar(10) NOT NULL default active,
-	created_at timestamp NOT NULL default now()
+	created_at timestamp NOT NULL default now(),
+	PRIMARY KEY ("id")
 );`,
 				`DROP TABLE IF EXISTS "public"."test_table";`,
 			},
 		},
 	}
 
-	conf := utils.ConfigYaml{}
-	conf.ReadConfig()
-
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
-			sqlUp, sqlDown := (&PgHandler{}).CreateTableStatement(&conf, &tt.tablemeta)
+			sqlUp, sqlDown := (&PgHandler{}).CreateTableStatement(&tt.tablemeta)
 			assert.Equal(t, sqlUp, tt.expect[0])
 			assert.Equal(t, sqlDown, tt.expect[1])
 		})

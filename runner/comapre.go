@@ -35,7 +35,7 @@ func GetCatalogData(left []string, right []string) (strUp []string, strDown []st
 	for k, v := range cat.Names {
 		if v == 1 {
 			both = append(both, k)
-		} else if v == 2 {
+		} else if v == 0 {
 			onright = append(onright, k)
 		} else {
 			onleft = append(onleft, k)

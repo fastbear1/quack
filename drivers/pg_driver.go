@@ -86,7 +86,8 @@ const (
 {{- end}}
 );`
 	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
-	CreateColumn      = `{{ .ColumnName }} {{ .DataType }}{{ if .IsPrimary }} PRIMARY KEY{{ end }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}{{ if not (isLast $i $lenColumns) }},{{ end }}`
+	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
+	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN {{ .ColumnName }}`
 	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} {{.Type}} {{.Expression}}({{.Columns}});`
 	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
 	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{RefColumn}}"){{if .RefOptions}}{{.RefOptions}}{{end}}`
@@ -365,6 +366,42 @@ func (pg *PgHandler) CreateTableStatement(t *TableMeta) (string, string) {
 	}
 	sqlDown = sqlCommand.String()
 	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) CreateColumnStatement(col *Column) (string, string) {
+	var sqlUp, sqlDown string
+	sqlUp = getCreateColumnCommand(col)
+	sqlDown = getDropColumnCommand(col)
+	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) DropColumnStatement(col *Column) (string, string) {
+	var sqlUp, sqlDown string
+	sqlUp = getDropColumnCommand(col)
+	sqlDown = getCreateColumnCommand(col)
+	return sqlUp, sqlDown
+}
+
+func getCreateColumnCommand(col *Column) string {
+	var sqlCommand bytes.Buffer
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateColumn)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
+		fmt.Println(err)
+	}
+	return sqlCommand.String()
+}
+
+func getDropColumnCommand(col *Column) string {
+	var sqlCommand bytes.Buffer
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropColumn)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
+		fmt.Println(err)
+	}
+	return sqlCommand.String()
 }
 
 func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) (string, string) {

@@ -93,6 +93,7 @@ func parseModelStruct(data ModelStruct, drv d.DbHandler) d.TableMeta {
 
 	for _, f := range data.Fields {
 		column := d.Column{
+			TableName:         model.Name,
 			ColumnName:        drv.TransformName(f.FieldName),
 			DataType:          drv.TransformType(f.FieldType),
 			IsNullable:        false,

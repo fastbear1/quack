@@ -1,6 +1,7 @@
 package drivers
 
 type Column struct {
+	TableName         string
 	ColumnName        string
 	DataType          string
 	IsNullable        bool
@@ -48,6 +49,14 @@ func (table *TableMeta) CreateTable(drv DbHandler) (string, string) {
 	return drv.CreateTableStatement(table)
 }
 
+func (col *Column) CreateColumn(drv DbHandler) (string, string) {
+	return drv.CreateColumnStatement(col)
+}
+
+func (col *Column) DeleteColumn(drv DbHandler) (string, string) {
+	return drv.DropColumnStatement(col)
+}
+
 func (idx *IndexMeta) CreateIndex(drv DbHandler) (string, string) {
 	return drv.CreateIndexStatement(idx)
 }
@@ -61,5 +70,5 @@ func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) (string, string) {
 }
 
 func (ref *ReferenceMeta) DeleteConstraint(drv DbHandler) (string, string) {
-	return drv.DeleteConstraintStatement(ref)
+	return drv.DropConstraintStatement(ref)
 }

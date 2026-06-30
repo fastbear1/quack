@@ -18,10 +18,12 @@ type DbHandler interface {
 	TransformType(g_type string) string
 	TransformDefault(col_type string, val string) string
 	CreateTableStatement(table *TableMeta) (string, string)
+	CreateColumnStatement(col *Column) (string, string)
+	DropColumnStatement(col *Column) (string, string)
 	CreateIndexStatement(idx *IndexMeta) (string, string)
 	DropIndexStatement(idx *IndexMeta) (string, string)
 	CreateConstraintStatement(ref *ReferenceMeta) (string, string)
-	DeleteConstraintStatement(ref *ReferenceMeta) (string, string)
+	DropConstraintStatement(ref *ReferenceMeta) (string, string)
 }
 
 func GetDriver(db_type string) (DbHandler, error) {

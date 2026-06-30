@@ -17,9 +17,11 @@ type DbHandler interface {
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string
 	TransformDefault(col_type string, val string) string
-	CreateTableStatement(conf *utils.ConfigYaml, table *TableMeta) (string, string)
-	CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta) (string, string)
-	CreateConstraintStatement(conf *utils.ConfigYaml, ref *ReferenceMeta) (string, string)
+	CreateTableStatement(table *TableMeta) (string, string)
+	CreateIndexStatement(idx *IndexMeta) (string, string)
+	DropIndexStatement(idx *IndexMeta) (string, string)
+	CreateConstraintStatement(ref *ReferenceMeta) (string, string)
+	DeleteConstraintStatement(ref *ReferenceMeta) (string, string)
 }
 
 func GetDriver(db_type string) (DbHandler, error) {

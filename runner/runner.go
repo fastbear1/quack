@@ -70,7 +70,7 @@ func Run(conf *utils.ConfigYaml) {
 	utils.CheckErrLite(err)
 	var sqlUp, sqlDown []string
 	for _, f := range funcList {
-		up, down := f(conf, drv)
+		up, down := f(drv)
 		sqlUp = append(sqlUp, up)
 		sqlDown = append(sqlDown, down)
 	}
@@ -190,12 +190,13 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 					settings["TYPE"] = "btree"
 				}
 				idxmeta = d.IndexMeta{
-					Name:   name,
-					Unique: uniqidx,
-					Type:   settings["TYPE"],
-					Where:  settings["WHERE"],
-					Option: settings["OPTION"],
-					Parsed: true,
+					TableName: table,
+					Name:      name,
+					Unique:    uniqidx,
+					Type:      settings["TYPE"],
+					Where:     settings["WHERE"],
+					Option:    settings["OPTION"],
+					Parsed:    true,
 					Columns: []d.IndexOption{{
 						Field:      column,
 						Expression: settings["EXPRESSION"],
@@ -257,7 +258,9 @@ func createIndexName(table string, columns []string, exp string) string {
 
 func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, tag string) d.ReferenceMeta {
 	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
-	var ref = d.ReferenceMeta{}
+	var ref = d.ReferenceMeta{
+		TableName: table,
+	}
 	tag = strings.TrimPrefix(tag, "gorm:")
 	tag = tag[1 : len(tag)-1]
 	for _, value := range strings.Split(tag, ";") {
@@ -309,8 +312,8 @@ func transformAction(action string) string {
 	return defaction
 }
 
-func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(conf *utils.ConfigYaml, drv d.DbHandler) (string, string), error) {
-	var funcList []func(conf *utils.ConfigYaml, drv d.DbHandler) (string, string)
+func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), error) {
+	var funcList []func(drv d.DbHandler) (string, string)
 	if len(dbmeta) == 0 {
 		// return create table for all objects in gmeta
 		for _, str := range gmeta {

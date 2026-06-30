@@ -90,6 +90,7 @@ const (
 	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} {{.Type}} {{.Expression}}({{.Columns}});`
 	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
 	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{RefColumn}}"){{if .RefOptions}}{{.RefOptions}}{{end}}`
+	DropConstraint    = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT "{{.Name}}"`
 )
 
 var funcMap = template.FuncMap{
@@ -328,7 +329,7 @@ func (pg *PgHandler) TransformDefault(columnType string, columnDefault string) s
 	return defValue
 }
 
-func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) (string, string) {
+func (pg *PgHandler) CreateTableStatement(t *TableMeta) (string, string) {
 	var sqlCommand bytes.Buffer
 	var sqlUp, sqlDown string
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTemaplete)
@@ -366,7 +367,8 @@ func (pg *PgHandler) CreateTableStatement(conf *utils.ConfigYaml, t *TableMeta) 
 	return sqlUp, sqlDown
 }
 
-func (pg *PgHandler) CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta) (string, string) {
+func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) (string, string) {
+	//TODO: to refactor
 	var sqlCommand bytes.Buffer
 	var sqlUp, sqlDown string
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndex)
@@ -380,7 +382,7 @@ func (pg *PgHandler) CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta
 		Expression string
 		Columns    string
 	}{
-		idx.Name,
+		idx.TableName,
 		idx.Name,
 		idx.Unique,
 		idx.Type,
@@ -406,8 +408,58 @@ func (pg *PgHandler) CreateIndexStatement(conf *utils.ConfigYaml, idx *IndexMeta
 	return sqlUp, sqlDown
 }
 
-func (pg *PgHandler) CreateConstraintStatement(conf *utils.ConfigYaml, ref *ReferenceMeta) (string, string) {
+func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) (string, string) {
+	var sqlCommand bytes.Buffer
+	var sqlUp, sqlDown string
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndex)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, idx); err != nil {
+		fmt.Println(err)
+	}
+	sqlUp = sqlCommand.String()
+
+	// create re-up statement
+	sqlDown, _ = pg.CreateIndexStatement(idx)
+
+	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) (string, string) {
+	var sqlCommand bytes.Buffer
 	var sqlUp, sqlDown string = "", ""
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateConstraint)
+	utils.CheckErrLite(err)
+	downTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraint)
+
+	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
+		fmt.Println(err)
+	}
+
+	sqlUp = sqlCommand.String()
+	sqlCommand.Reset()
+
+	if err := downTmpl.Execute(&sqlCommand, ref); err != nil {
+		fmt.Println(err)
+	}
+	sqlDown = sqlCommand.String()
+
+	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) DropConstraintStatement(ref *ReferenceMeta) (string, string) {
+	var sqlCommand bytes.Buffer
+	var sqlUp, sqlDown string = "", ""
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraint)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
+		fmt.Println(err)
+	}
+
+	sqlUp = sqlCommand.String()
+	sqlDown, _ = pg.CreateConstraintStatement(ref)
+
 	return sqlUp, sqlDown
 }
 

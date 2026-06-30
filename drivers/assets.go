@@ -1,9 +1,5 @@
 package drivers
 
-import (
-	utils "github.com/fastbear1/quack/internal"
-)
-
 type Column struct {
 	ColumnName        string
 	DataType          string
@@ -14,6 +10,7 @@ type Column struct {
 }
 
 type ReferenceMeta struct {
+	TableName  string
 	Name       string
 	Column     string
 	RefTable   string
@@ -30,13 +27,14 @@ type IndexOption struct {
 }
 
 type IndexMeta struct {
-	Name    string
-	Unique  bool
-	Parsed  bool
-	Columns []IndexOption
-	Type    string
-	Where   string
-	Option  string
+	TableName string
+	Name      string
+	Unique    bool
+	Parsed    bool
+	Columns   []IndexOption
+	Type      string
+	Where     string
+	Option    string
 }
 
 type TableMeta struct {
@@ -46,14 +44,22 @@ type TableMeta struct {
 	Indeces    []IndexMeta
 }
 
-func (table *TableMeta) CreateTable(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
-	return drv.CreateTableStatement(conf, table)
+func (table *TableMeta) CreateTable(drv DbHandler) (string, string) {
+	return drv.CreateTableStatement(table)
 }
 
-func (idx *IndexMeta) CreateIndex(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
-	return drv.CreateIndexStatement(conf, idx)
+func (idx *IndexMeta) CreateIndex(drv DbHandler) (string, string) {
+	return drv.CreateIndexStatement(idx)
 }
 
-func (ref *ReferenceMeta) CreateConstraint(conf *utils.ConfigYaml, drv DbHandler) (string, string) {
-	return drv.CreateConstraintStatement(conf, ref)
+func (idx *IndexMeta) DropIndex(drv DbHandler) (string, string) {
+	return drv.DropIndexStatement(idx)
+}
+
+func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) (string, string) {
+	return drv.CreateConstraintStatement(ref)
+}
+
+func (ref *ReferenceMeta) DeleteConstraint(drv DbHandler) (string, string) {
+	return drv.DeleteConstraintStatement(ref)
 }

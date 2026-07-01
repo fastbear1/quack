@@ -48,9 +48,9 @@ func getCatalogData(left []string, right []string) (strUp []string, strDown []st
 	return onleft, onright
 }
 
-func StateDifference(leftArray []d.Meta, rightArray []d.Meta) ([]interface{}, []interface{}) {
-	var retLeft, retRight []interface{}
-	var leftMap, rightMap map[string]d.Meta
+func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T) {
+	var retLeft, retRight []T
+	var leftMap, rightMap map[string]T
 
 	for _, i := range leftArray {
 		leftMap[i.GetName()] = i

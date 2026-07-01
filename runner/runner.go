@@ -374,18 +374,18 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 	// Check columns
 	// check all column are exists
 	for name, gtable := range gmap {
-		if dbtable, ok := dbmap[name]; ok != true {
+		if dbtable, ok := dbmap[name]; !ok {
 			// Skipping tables that are not exists for now
 			continue
 		} else {
 			toCreateCol, toDeleteCol := StateDifference(gtable.Columns, dbtable.Columns)
 			for _, c := range toCreateCol {
-				col := c.(d.Column)
-				funcList = append(funcList, col.CreateColumn)
+				//col := c.(d.Column)
+				funcList = append(funcList, c.CreateColumn)
 			}
 			for _, c := range toDeleteCol {
-				col := c.(d.Column)
-				funcList = append(funcList, col.DeleteColumn)
+				//col := c.(d.Column)
+				funcList = append(funcList, c.DeleteColumn)
 			}
 		}
 	}

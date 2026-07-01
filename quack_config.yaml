@@ -3,16 +3,13 @@ database:
   uri: "postgres://stexp:1!password!2@postgres:5432/stexp"
   name: "stexp"
   exclude:
-    - "auth_users"
     - "users"
-    - "recars"
     - "goose_migrations"
 models:
   path: "models"
   exclude:
     - "Base"
     - "Users"
-    - "Clicks"
     - "AuthUsers"
 migrations:
   path: "migrations"

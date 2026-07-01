@@ -49,20 +49,20 @@ type TableMeta struct {
 	Indeces    []IndexMeta
 }
 
-// Correspondance to Meta interface
+// Implement Meta interface
 func (col Column) GetName() string {
 	return col.ColumnName
 }
 
-func (ref *ReferenceMeta) GetName() string {
+func (ref ReferenceMeta) GetName() string {
 	return ref.Name
 }
 
-func (idx *IndexMeta) GetName() string {
+func (idx IndexMeta) GetName() string {
 	return idx.Name
 }
 
-func (t *TableMeta) GetName() string {
+func (t TableMeta) GetName() string {
 	return t.Name
 }
 

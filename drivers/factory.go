@@ -18,6 +18,7 @@ type DbHandler interface {
 	TransformType(g_type string) string
 	TransformDefault(col_type string, val string) string
 	CreateTableStatement(table *TableMeta) (string, string)
+	DropTableStatement(table *TableMeta) (string, string)
 	CreateColumnStatement(col *Column) (string, string)
 	DropColumnStatement(col *Column) (string, string)
 	CreateIndexStatement(idx *IndexMeta) (string, string)

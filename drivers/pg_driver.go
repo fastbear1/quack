@@ -25,6 +25,7 @@ type PgColumn struct {
 var TypeConversion = map[string]string{
 	"uint":   "bigint",
 	"uint16": "smallint",
+	"string": "text",
 }
 
 const (
@@ -88,7 +89,7 @@ const (
 	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
 	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
 	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN {{ .ColumnName }}`
-	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} {{.Type}} {{.Expression}}({{.Columns}});`
+	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
 	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
 	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{RefColumn}}"){{if .RefOptions}}{{.RefOptions}}{{end}}`
 	DropConstraint    = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT "{{.Name}}"`
@@ -365,6 +366,22 @@ func (pg *PgHandler) CreateTableStatement(t *TableMeta) (string, string) {
 		fmt.Println(err)
 	}
 	sqlDown = sqlCommand.String()
+	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) DropTableStatement(t *TableMeta) (string, string) {
+	var sqlCommand bytes.Buffer
+	var sqlUp, sqlDown string
+
+	deleteTmpl, err := template.New("delete").Parse(DropTableTemplate)
+	utils.CheckErrLite(err)
+
+	if err := deleteTmpl.Execute(&sqlCommand, t); err != nil {
+		fmt.Println(err)
+	}
+	sqlUp = sqlCommand.String()
+
+	sqlDown, _ = pg.CreateTableStatement(t)
 	return sqlUp, sqlDown
 }
 

@@ -151,6 +151,9 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 		idxfound bool        = false
 	)
 	tag = strings.TrimPrefix(tag, "gorm:")
+	if tag == "" {
+		return idxmeta, idxfound
+	}
 	tag = tag[1 : len(tag)-1]
 
 	for _, value := range strings.Split(tag, ";") {
@@ -314,7 +317,12 @@ func transformAction(action string) string {
 }
 
 func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), error) {
-	var funcList []func(drv d.DbHandler) (string, string)
+	var (
+		funcList []func(drv d.DbHandler) (string, string)
+		dbmap    map[string]d.TableMeta
+		gmap     map[string]d.TableMeta
+	)
+
 	if len(dbmeta) == 0 {
 		// return create table for all objects in gmeta
 		for _, str := range gmeta {
@@ -323,7 +331,65 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 				funcList = append(funcList, i.CreateIndex)
 			}
 		}
+		// job done, not enough data for comparing
+		return funcList, nil
 	}
+	var (
+		left  = make([]string, 0)
+		right = make([]string, 0)
+	)
+	for _, l := range gmeta {
+		left = append(left, l.Name)
+		gmap[l.Name] = l
+	}
+	for _, r := range dbmeta {
+		right = append(right, r.Name)
+		dbmap[r.Name] = r
+	}
+
+	toDelete, toCreate := getCatalogData(left, right)
+
+	if len(toDelete) > 0 || len(toCreate) > 0 {
+		//TODO: unefficient
+		for _, cr := range toCreate {
+			for _, l := range gmeta {
+				if cr == l.Name {
+					funcList = append(funcList, l.CreateTable)
+					for _, idx := range l.Indeces {
+						funcList = append(funcList, idx.CreateIndex)
+					}
+				}
+			}
+		}
+
+		for _, dt := range toDelete {
+			for _, r := range dbmeta {
+				if dt == r.Name {
+					funcList = append(funcList, r.DeleteTable)
+				}
+			}
+		}
+	}
+
+	// Check columns
+	// check all column are exists
+	for name, gtable := range gmap {
+		if dbtable, ok := dbmap[name]; ok != true {
+			// Skipping tables that are not exists for now
+			continue
+		} else {
+			toCreateCol, toDeleteCol := StateDifference(gtable.Columns, dbtable.Columns)
+			for _, c := range toCreateCol {
+				col := c.(d.Column)
+				funcList = append(funcList, col.CreateColumn)
+			}
+			for _, c := range toDeleteCol {
+				col := c.(d.Column)
+				funcList = append(funcList, col.DeleteColumn)
+			}
+		}
+	}
+
 	// Not implemented
 	return funcList, nil
 }

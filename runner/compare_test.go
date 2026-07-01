@@ -33,7 +33,7 @@ func TestGetCatalogData(t *testing.T) {
 	}
 	for _, tt := range test {
 		t.Run(fmt.Sprintf("Test for %s", tt.name), func(t *testing.T) {
-			resLeft, resRight := GetCatalogData(tt.left, tt.right)
+			resLeft, resRight := getCatalogData(tt.left, tt.right)
 			assert.Equal(t, resLeft, tt.expectLeft)
 			assert.Equal(t, resRight, tt.expectRight)
 		})

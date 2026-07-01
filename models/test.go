@@ -50,3 +50,10 @@ type SimpleTable struct {
 	UpdatedAt time.Time `gorm:"type:timestamp;not null;default:now()"`
 	//Users     Users     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE,OnUpdate:SET NULL;"`
 }
+
+type Clicks struct {
+	Base
+	Type   string
+	UserID uuid.UUID `gorm:"type:uuid;not null"`
+	Users  Users     `gorm:"foreignKey:UserID;referenceName:clicks_users_user_id_idconstraint:OnDelete:CASCADE;"`
+}

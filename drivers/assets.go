@@ -1,5 +1,9 @@
 package drivers
 
+type Meta interface {
+	GetName() string
+}
+
 type Column struct {
 	TableName         string
 	ColumnName        string
@@ -45,8 +49,30 @@ type TableMeta struct {
 	Indeces    []IndexMeta
 }
 
+// Correspondance to Meta interface
+func (col Column) GetName() string {
+	return col.ColumnName
+}
+
+func (ref *ReferenceMeta) GetName() string {
+	return ref.Name
+}
+
+func (idx *IndexMeta) GetName() string {
+	return idx.Name
+}
+
+func (t *TableMeta) GetName() string {
+	return t.Name
+}
+
+// SQL commands
 func (table *TableMeta) CreateTable(drv DbHandler) (string, string) {
 	return drv.CreateTableStatement(table)
+}
+
+func (table *TableMeta) DeleteTable(drv DbHandler) (string, string) {
+	return drv.DropTableStatement(table)
 }
 
 func (col *Column) CreateColumn(drv DbHandler) (string, string) {

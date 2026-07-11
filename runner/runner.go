@@ -136,6 +136,7 @@ func parseTag(col *d.Column, tag string) {
 			switch t {
 			case "primary_key":
 				col.IsPrimary = true
+				col.PrimaryConstraint = fmt.Sprintf("%s_pkey", col.TableName)
 			case "not null":
 				col.IsNullable = false
 			case "null":
@@ -151,17 +152,14 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 		idxfound bool        = false
 	)
 	tag = strings.TrimPrefix(tag, "gorm:")
-	if tag == "" {
+	if tag == "" || strings.Contains(tag, "primary_key") {
+		// skip empty tag or primary key column
 		return idxmeta, idxfound
 	}
-	tag = tag[1 : len(tag)-1]
+	tag = tag[1 : len(tag)-1] // remove parent double quotes
 
 	for _, value := range strings.Split(tag, ";") {
 		if value != "" {
-			if strings.Contains(value, "primary_key") {
-				// Skip primary keys indices
-				continue
-			}
 			v := strings.Split(value, ":")
 			k := strings.TrimSpace(v[0])
 			if k == "index" || k == "uniqueindex" {
@@ -319,8 +317,8 @@ func transformAction(action string) string {
 func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), error) {
 	var (
 		funcList []func(drv d.DbHandler) (string, string)
-		dbmap    map[string]d.TableMeta
-		gmap     map[string]d.TableMeta
+		dbmap    = map[string]d.TableMeta{}
+		gmap     = map[string]d.TableMeta{}
 	)
 
 	if len(dbmeta) == 0 {
@@ -350,7 +348,7 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 	toDelete, toCreate := getCatalogData(left, right)
 
 	if len(toDelete) > 0 || len(toCreate) > 0 {
-		//TODO: unefficient
+		//TODO: inefficient
 		for _, cr := range toCreate {
 			for _, l := range gmeta {
 				if cr == l.Name {
@@ -378,17 +376,22 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 			// Skipping tables that are not exists for now
 			continue
 		} else {
-			toCreateCol, toDeleteCol := StateDifference(gtable.Columns, dbtable.Columns)
+			toCreateCol, toDeleteCol, toAlterCol := StateDifference(gtable.Columns, dbtable.Columns)
 			for _, c := range toCreateCol {
-				//col := c.(d.Column)
 				funcList = append(funcList, c.CreateColumn)
 			}
 			for _, c := range toDeleteCol {
-				//col := c.(d.Column)
 				funcList = append(funcList, c.DeleteColumn)
+			}
+			for _, c := range toAlterCol {
+				funcList = append(funcList, c.AlterColumn)
 			}
 		}
 	}
+	// now check that columns has same parameters
+
+	// Same shit for references
+	// Same shit for indices
 
 	// Not implemented
 	return funcList, nil

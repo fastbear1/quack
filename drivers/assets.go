@@ -79,6 +79,10 @@ func (col *Column) CreateColumn(drv DbHandler) (string, string) {
 	return drv.CreateColumnStatement(col)
 }
 
+func (col *Column) AlterColumn(drv DbHandler) (string, string) {
+	return drv.AlterColumnStatement(col)
+}
+
 func (col *Column) DeleteColumn(drv DbHandler) (string, string) {
 	return drv.DropColumnStatement(col)
 }

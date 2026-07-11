@@ -20,6 +20,7 @@ type DbHandler interface {
 	CreateTableStatement(table *TableMeta) (string, string)
 	DropTableStatement(table *TableMeta) (string, string)
 	CreateColumnStatement(col *Column) (string, string)
+	AlterColumnStatement(col *Column) (string, string)
 	DropColumnStatement(col *Column) (string, string)
 	CreateIndexStatement(idx *IndexMeta) (string, string)
 	DropIndexStatement(idx *IndexMeta) (string, string)

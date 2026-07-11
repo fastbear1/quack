@@ -55,5 +55,25 @@ type Clicks struct {
 	Base
 	Type   string
 	UserID uuid.UUID `gorm:"type:uuid;not null"`
-	Users  Users     `gorm:"foreignKey:UserID;referenceName:clicks_users_user_id_idconstraint:OnDelete:CASCADE;"`
+	Users  Users     `gorm:"foreignKey:UserID;referenceName:clicks_users_user_id_id;constraint:OnDelete:CASCADE;"`
+}
+
+type Cars struct {
+	Base
+	Name            string `gorm:"type:varchar(255);not null"`
+	Color           string `gorm:"type:varchar(255);default:grey"`
+	EnginePowerHp   uint16 `gorm:"null"`
+	Shifts          uint8  `gorm:"type:smallint;null"`
+	ElectricPowerKw uint16 `gorm:"null"`
+}
+
+type Commands struct {
+	Base
+	Name  string    `gorm:"type:varchar(255);not null"`
+	Cid   uuid.UUID `gorm:"type:uuid;index;default:uuidv4()"`
+	CarId uuid.UUID `gorm:"type:uuid;not null"`
+	Owner string    `gorm:"type:text;null"`
+	//Description string    `gorm:"type:text;null"`
+	BudgetM float32 `gorm:"null"`
+	Cars    Cars    `gorm:"foreignKey:CarId;referenceName:commands_cars_car_id_id;constraint:OnDelete:CASCADE;"`
 }

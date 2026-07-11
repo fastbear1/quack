@@ -48,9 +48,10 @@ func getCatalogData(left []string, right []string) (strUp []string, strDown []st
 	return onleft, onright
 }
 
-func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T) {
+// TODO: expensive code
+func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	var retLeft, retRight []T
-	var leftMap, rightMap map[string]T
+	var leftMap, rightMap = map[string]T{}, map[string]T{}
 
 	for _, i := range leftArray {
 		leftMap[i.GetName()] = i
@@ -71,11 +72,32 @@ func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T) {
 	missedRight, missedLeft := getCatalogData(leftNames, rightNames)
 
 	for _, lname := range missedRight {
-		retLeft = append(retLeft, leftMap[lname])
+		retRight = append(retRight, rightMap[lname])
 	}
 	for _, rname := range missedLeft {
-		retRight = append(retRight, rightMap[rname])
+		retLeft = append(retLeft, leftMap[rname])
 	}
 
-	return retLeft, retRight
+	var alterColumns []T
+	// compare column parameters
+	for k, lv := range leftMap {
+		if rv, ok := rightMap[k]; ok {
+			state := compareColumnState(lv, rv)
+
+			if !state {
+				alterColumns = append(alterColumns, lv)
+			}
+		}
+	}
+
+	return retLeft, retRight, alterColumns
+}
+
+func compareColumnState(l d.Meta, r d.Meta) bool {
+	left := l.(d.Column)
+	right := r.(d.Column)
+	if left.DataType != right.DataType || left.IsNullable != right.IsNullable || left.IsPrimary != right.IsPrimary || left.PrimaryConstraint != right.PrimaryConstraint {
+		return false
+	}
+	return true
 }

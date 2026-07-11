@@ -23,9 +23,11 @@ type PgColumn struct {
 
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
-	"uint":   "bigint",
-	"uint16": "smallint",
-	"string": "text",
+	"uint":    "bigint",
+	"uint16":  "smallint",
+	"string":  "text",
+	"float32": "real",
+	"float64": "double precision",
 }
 
 const (
@@ -88,6 +90,7 @@ const (
 );`
 	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
 	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
+	AlterColumn       = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }} TYPE {{ .DataType }}{{if .IsNullable}} SET NULL{{end}}{{ if .ColumnDefault }} SET DEFAULT {{ .ColumnDefault }}{{ end }}`
 	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN {{ .ColumnName }}`
 	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
 	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
@@ -179,6 +182,7 @@ func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([
 
 	for i := 0; i < len(notes); i++ {
 		res = append(res, Column{
+			TableName:     name,
 			ColumnName:    notes[i].Column_name,
 			DataType:      normalizeCharacterVariyng(notes[i].Data_type, notes[i].Character_maximum_length),
 			IsNullable:    transformNullToString(notes[i].Is_nullable),
@@ -392,6 +396,12 @@ func (pg *PgHandler) CreateColumnStatement(col *Column) (string, string) {
 	return sqlUp, sqlDown
 }
 
+func (pg *PgHandler) AlterColumnStatement(col *Column) (string, string) {
+	var sqlUp, sqlDown string
+	sqlUp = getAlterColumnCommand(col)
+	return sqlUp, sqlDown
+}
+
 func (pg *PgHandler) DropColumnStatement(col *Column) (string, string) {
 	var sqlUp, sqlDown string
 	sqlUp = getDropColumnCommand(col)
@@ -402,6 +412,17 @@ func (pg *PgHandler) DropColumnStatement(col *Column) (string, string) {
 func getCreateColumnCommand(col *Column) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateColumn)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
+		fmt.Println(err)
+	}
+	return sqlCommand.String()
+}
+
+func getAlterColumnCommand(col *Column) string {
+	var sqlCommand bytes.Buffer
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(AlterColumn)
 	utils.CheckErrLite(err)
 
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {

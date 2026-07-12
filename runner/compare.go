@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"fmt"
+
 	d "github.com/fastbear1/quack/drivers"
 )
 
@@ -82,10 +84,10 @@ func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	// compare column parameters
 	for k, lv := range leftMap {
 		if rv, ok := rightMap[k]; ok {
-			state := compareColumnState(lv, rv)
-
-			if !state {
-				alterColumns = append(alterColumns, lv)
+			lcol := any(lv).(d.Column)
+			rcol := any(rv).(d.Column)
+			if state := columnSchemaChanged(&lcol, &rcol); state {
+				alterColumns = append(alterColumns, any(lcol).(T))
 			}
 		}
 	}
@@ -93,11 +95,23 @@ func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	return retLeft, retRight, alterColumns
 }
 
-func compareColumnState(l d.Meta, r d.Meta) bool {
-	left := l.(d.Column)
-	right := r.(d.Column)
-	if left.DataType != right.DataType || left.IsNullable != right.IsNullable || left.IsPrimary != right.IsPrimary || left.PrimaryConstraint != right.PrimaryConstraint {
-		return false
+func columnSchemaChanged(left *d.Column, right *d.Column) bool {
+	var changed bool = false
+	if left.DataType != right.DataType {
+		left.AlterState.Type = 0
+		left.AlterState.DataType = right.DataType
+		changed = true
 	}
-	return true
+	if left.IsNullable != right.IsNullable {
+		left.AlterState.Type = 1
+		left.AlterState.IsNullable = right.IsNullable
+		changed = true
+	}
+	if left.ColumnDefault != right.ColumnDefault {
+		fmt.Printf("Compare left - %s, right - %s\n", left.ColumnDefault, right.ColumnDefault)
+		left.AlterState.Type = 2
+		left.AlterState.ColumnDefault = right.ColumnDefault
+		changed = true
+	}
+	return changed
 }

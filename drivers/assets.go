@@ -4,6 +4,13 @@ type Meta interface {
 	GetName() string
 }
 
+type AlterState struct {
+	Type          uint8 // what shoul be altered 0 - data type, 1 - nullable, 2 - default value
+	DataType      string
+	IsNullable    bool
+	ColumnDefault string
+}
+
 type Column struct {
 	TableName         string
 	ColumnName        string
@@ -12,6 +19,7 @@ type Column struct {
 	ColumnDefault     string
 	IsPrimary         bool
 	PrimaryConstraint string
+	AlterState        AlterState
 }
 
 type ReferenceMeta struct {

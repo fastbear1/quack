@@ -307,11 +307,11 @@ func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, 
 
 func transformAction(action string) string {
 	// TODO: driver depend function, delegate transformation to driver
-	defaction := "ON DELETE"
+	defaultAction := "ON DELETE"
 	if action == "OnUpdate" {
-		defaction = "ON UPDATE"
+		defaultAction = "ON UPDATE"
 	}
-	return defaction
+	return defaultAction
 }
 
 func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), error) {

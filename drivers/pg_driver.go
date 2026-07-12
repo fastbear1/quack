@@ -21,6 +21,15 @@ type PgColumn struct {
 	Column_default           pgtype.Text
 }
 
+type AlterData struct {
+	TableName     string
+	ColumnName    string
+	Type          uint8
+	DataType      string
+	IsNullable    bool
+	ColumnDefault string
+}
+
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
 	"uint":    "bigint",
@@ -90,7 +99,7 @@ const (
 );`
 	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
 	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
-	AlterColumn       = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }} TYPE {{ .DataType }}{{if .IsNullable}} SET NULL{{end}}{{ if .ColumnDefault }} SET DEFAULT {{ .ColumnDefault }}{{ end }}`
+	AlterColumn       = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }}`
 	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN {{ .ColumnName }}`
 	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
 	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
@@ -398,7 +407,19 @@ func (pg *PgHandler) CreateColumnStatement(col *Column) (string, string) {
 
 func (pg *PgHandler) AlterColumnStatement(col *Column) (string, string) {
 	var sqlUp, sqlDown string
-	sqlUp = getAlterColumnCommand(col)
+	sqlUp = getAlterColumnCommand(col, false)
+
+	// declate temporary strict for downgrade alter command
+	var data = AlterData{
+		TableName:     col.TableName,
+		ColumnName:    col.ColumnName,
+		Type:          col.AlterState.Type,
+		DataType:      col.AlterState.DataType,
+		IsNullable:    col.AlterState.IsNullable,
+		ColumnDefault: col.AlterState.ColumnDefault,
+	}
+	sqlDown = getAlterColumnCommand(&data, true)
+
 	return sqlUp, sqlDown
 }
 
@@ -420,15 +441,55 @@ func getCreateColumnCommand(col *Column) string {
 	return sqlCommand.String()
 }
 
-func getAlterColumnCommand(col *Column) string {
+func getAlterColumnCommand(col any, downgrade bool) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(AlterColumn)
 	utils.CheckErrLite(err)
-
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
 		fmt.Println(err)
 	}
-	return sqlCommand.String()
+	sql := sqlCommand.String()
+
+	if downgrade {
+		alt := col.(*AlterData)
+		fmt.Println(utils.PrettyPrint(alt))
+		switch alt.Type {
+		case 0:
+			sql = sql + " " + fmt.Sprintf("TYPE %s", alt.DataType)
+		case 1:
+			if alt.IsNullable == true {
+				sql = sql + " " + "DROP NOT NULL"
+			} else {
+				sql = sql + " " + "SET NOT NULL"
+			}
+		case 2:
+			if alt.ColumnDefault == "" {
+				sql = sql + " " + "DROP DEFAULT"
+			} else {
+				sql = sql + " " + fmt.Sprintf("SET DEFAULT %s", alt.ColumnDefault)
+			}
+		}
+		fmt.Println(sql)
+	} else {
+		alt := col.(*Column)
+		switch alt.AlterState.Type {
+		case 0:
+			sql = sql + " " + fmt.Sprintf("TYPE %s", alt.DataType)
+		case 1:
+			if alt.IsNullable == true {
+				sql = sql + " " + "DROP NOT NULL"
+			} else {
+				sql = sql + " " + "SET NOT NULL"
+			}
+		case 2:
+			if alt.ColumnDefault == "" {
+				sql = sql + " " + "DROP DEFAULT"
+			} else {
+				sql = sql + " " + fmt.Sprintf("SET DEFAULT %s", alt.ColumnDefault)
+			}
+		}
+	}
+	return sql
 }
 
 func getDropColumnCommand(col *Column) string {

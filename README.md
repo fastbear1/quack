@@ -1,5 +1,5 @@
 # quack
-Tool for create goose migration files according gorm models and database state
+Tool for create goose migration files according gorm models and database schema
 
 ----------------
 ### Restrictions
@@ -10,3 +10,5 @@ Tool for create goose migration files according gorm models and database state
 #### Relation fields
  - only explicit declaration for reference fields with tag contains foreignKey attribute
 
+#### Alter column
+ - only data, nullable and default value checking for altering column

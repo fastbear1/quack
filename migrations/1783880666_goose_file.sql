@@ -23,6 +23,7 @@ CREATE TABLE "public"."clicks"(
 DROP TABLE IF EXISTS "public"."recars";
 ALTER TABLE "public"."cars" ADD COLUMN shifts smallint
 ALTER TABLE "public"."commands" DROP COLUMN description
+ALTER TABLE "public"."commands" ALTER COLUMN cid SET DEFAULT uuidv4()
 
 -- +goose Down
 DROP TABLE IF EXISTS "public"."simple_table";
@@ -38,3 +39,4 @@ CREATE TABLE "public"."recars"(
 );
 ALTER TABLE "public"."cars" DROP COLUMN shifts
 ALTER TABLE "public"."commands" ADD COLUMN description text
+ALTER TABLE "public"."commands" ALTER COLUMN cid SET DEFAULT gen_random_uuid()

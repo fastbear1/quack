@@ -107,6 +107,10 @@ func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) (string, string) {
 	return drv.CreateConstraintStatement(ref)
 }
 
+func (ref *ReferenceMeta) AlterConstraint(drv DbHandler) (string, string) {
+	return drv.CreateConstraintStatement(ref)
+}
+
 func (ref *ReferenceMeta) DeleteConstraint(drv DbHandler) (string, string) {
 	return drv.DropConstraintStatement(ref)
 }

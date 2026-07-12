@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"github.com/docker/docker/reference"
 	d "github.com/fastbear1/quack/drivers"
 )
 
@@ -111,4 +112,48 @@ func columnSchemaChanged(left *d.Column, right *d.Column) bool {
 		changed = true
 	}
 	return changed
+}
+
+func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.ReferenceMeta) ([]d.ReferenceMeta, []d.ReferenceMeta, []d.ReferenceMeta) {
+	var retLeft, retRight []d.ReferenceMeta
+	var leftMap, rightMap = map[string]d.ReferenceMeta{}, map[string]d.ReferenceMeta{}
+	var leftNames, rightNames []string
+
+	for _, i := range leftArray {
+		leftMap[i.GetName()] = i
+		leftNames = append(leftNames, i.GetName())
+	}
+	for _, j := range rightArray {
+		rightMap[j.GetName()] = j
+		rightNames = append(rightNames, j.GetName())
+	}
+
+	missedRight, missedLeft := getCatalogData(leftNames, rightNames)
+
+	for _, lname := range missedRight {
+		retRight = append(retRight, rightMap[lname])
+	}
+	for _, rname := range missedLeft {
+		retLeft = append(retLeft, leftMap[rname])
+	}
+
+	var alterColumns []d.ReferenceMeta
+	// compare column parameters
+	for k, lv := range leftMap {
+		if rv, ok := rightMap[k]; ok {
+			if state := isReferenceSchemaChanged(&lv, &rv); state {
+				alterColumns = append(alterColumns, lv)
+			}
+		}
+	}
+
+	return retLeft, retRight, alterColumns
+
+}
+
+func isReferenceSchemaChanged(l *d.ReferenceMeta, r *d.ReferenceMeta) bool {
+	if l.RefColumn != r.RefColumn || l.RefTable != r.RefTable || l.RefOptions != r.RefOptions {
+		return true
+	} 
+	return false
 }

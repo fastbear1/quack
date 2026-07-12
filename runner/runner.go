@@ -391,6 +391,24 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 	// now check that columns has same parameters
 
 	// Same shit for references
+	for name, gtable := range gmap {
+		if dbtable, ok := dbmap[name]; !ok {
+			// Skipping tables that are not exists for now
+			continue
+		} else {
+			toCreateRef, toDeleteRef, toAlterRef := StateDifference(gtable.References, dbtable.References)
+			for _, c := range toCreateRef {
+				funcList = append(funcList, c.CreateConstraint)
+			}
+			for _, c := range toDeleteRef {
+				funcList = append(funcList, c.DeleteConstraint)
+			}
+			for _, c := range toAlterRef {
+				funcList = append(funcList, c.AlterConstraint)
+			}
+		}
+	}
+
 	// Same shit for indices
 
 	// Not implemented

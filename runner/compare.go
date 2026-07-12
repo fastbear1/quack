@@ -108,7 +108,6 @@ func columnSchemaChanged(left *d.Column, right *d.Column) bool {
 		changed = true
 	}
 	if left.ColumnDefault != right.ColumnDefault {
-		fmt.Printf("Compare left - %s, right - %s\n", left.ColumnDefault, right.ColumnDefault)
 		left.AlterState.Type = 2
 		left.AlterState.ColumnDefault = right.ColumnDefault
 		changed = true

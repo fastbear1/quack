@@ -452,7 +452,6 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 
 	if downgrade {
 		alt := col.(*AlterData)
-		fmt.Println(utils.PrettyPrint(alt))
 		switch alt.Type {
 		case 0:
 			sql = sql + " " + fmt.Sprintf("TYPE %s", alt.DataType)
@@ -469,7 +468,6 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 				sql = sql + " " + fmt.Sprintf("SET DEFAULT %s", alt.ColumnDefault)
 			}
 		}
-		fmt.Println(sql)
 	} else {
 		alt := col.(*Column)
 		switch alt.AlterState.Type {

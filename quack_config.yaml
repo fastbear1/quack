@@ -10,5 +10,6 @@ models:
   exclude:
     - "Base"
     - "Users"
+    - "AuthUsers"
 migrations:
   path: "migrations"

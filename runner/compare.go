@@ -1,8 +1,6 @@
 package runner
 
 import (
-	"fmt"
-
 	d "github.com/fastbear1/quack/drivers"
 )
 

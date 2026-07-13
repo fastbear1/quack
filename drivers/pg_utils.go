@@ -70,7 +70,7 @@ func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {
 	return IndexMeta, nil
 }
 
-func ParseDatabaseReferences(refname string, refdef string) (ReferenceMeta, error) {
+func ParseDatabaseReferences(tableName string, refname string, refdef string) (ReferenceMeta, error) {
 	pattern := `FOREIGN KEY \((?<Column>\w+)\) REFERENCES (?<Reftable>\w+)\((?<Refcolumn>\w+)\)(?<Refoptions> .*)`
 
 	r := regexp.MustCompile(pattern)
@@ -86,11 +86,12 @@ func ParseDatabaseReferences(refname string, refdef string) (ReferenceMeta, erro
 	}
 
 	var refmeta = ReferenceMeta{
+		TableName:  tableName,
 		Name:       refname,
 		Column:     ref["Column"],
 		RefTable:   ref["Reftable"],
 		RefColumn:  ref["Refcolumn"],
-		RefOptions: ref["Refoptions"],
+		RefOptions: strings.TrimSpace(ref["Refoptions"]),
 	}
 	return refmeta, nil
 }

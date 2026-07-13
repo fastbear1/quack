@@ -66,12 +66,17 @@ func Run(conf *utils.ConfigYaml) {
 	}
 
 	// step3: Compare current state of metadata for database tables and gorm structures
-	funcList, err := compareMetaState(dbTablesMeta, gormStructMeta)
+	funcList, downFuncList, err := compareMetaState(dbTablesMeta, gormStructMeta)
 	utils.CheckErrLite(err)
 	var sqlUp, sqlDown []string
 	for _, f := range funcList {
 		up, down := f(drv)
 		sqlUp = append(sqlUp, up)
+		sqlDown = append(sqlDown, down)
+	}
+
+	for _, df := range downFuncList {
+		down := df(drv)
 		sqlDown = append(sqlDown, down)
 	}
 
@@ -261,7 +266,7 @@ func createIndexName(table string, columns []string, exp string) string {
 func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, tag string) d.ReferenceMeta {
 	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
 	var ref = d.ReferenceMeta{
-		TableName: table,
+		TableName: drv.TransformName(table),
 	}
 	tag = strings.TrimPrefix(tag, "gorm:")
 	tag = tag[1 : len(tag)-1]
@@ -314,9 +319,10 @@ func transformAction(action string) string {
 	return defaultAction
 }
 
-func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), error) {
+func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), []func(drv d.DbHandler) string, error) {
 	var (
 		funcList []func(drv d.DbHandler) (string, string)
+		downFunc []func(drv d.DbHandler) string
 		dbmap    = map[string]d.TableMeta{}
 		gmap     = map[string]d.TableMeta{}
 	)
@@ -330,7 +336,7 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 			}
 		}
 		// job done, not enough data for comparing
-		return funcList, nil
+		return funcList, downFunc, nil
 	}
 	var (
 		left  = make([]string, 0)
@@ -396,7 +402,7 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 			// Skipping tables that are not exists for now
 			continue
 		} else {
-			toCreateRef, toDeleteRef, toAlterRef := StateDifference(gtable.References, dbtable.References)
+			toCreateRef, toDeleteRef, toAlterRef := referenceStateChanged(gtable.References, dbtable.References)
 			for _, c := range toCreateRef {
 				funcList = append(funcList, c.CreateConstraint)
 			}
@@ -404,13 +410,31 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 				funcList = append(funcList, c.DeleteConstraint)
 			}
 			for _, c := range toAlterRef {
-				funcList = append(funcList, c.AlterConstraint)
+				funcList = append(funcList, c[0].AlterConstraint)
 			}
 		}
 	}
 
 	// Same shit for indices
+	for name, gtable := range gmap {
+		if dbtable, ok := dbmap[name]; !ok {
+			// Skipping tables that are not exists for now
+			continue
+		} else {
+			toCreateIdx, toDeleteIdx, toAlterIdx := indicesStateChanged(gtable.Indeces, dbtable.Indeces)
+			for _, c := range toCreateIdx {
+				funcList = append(funcList, c.CreateIndex)
+			}
+			for _, c := range toDeleteIdx {
+				funcList = append(funcList, c.DropIndex)
+			}
+			for _, c := range toAlterIdx {
+				funcList = append(funcList, c[0].CreateIndex)
+				downFunc = append(downFunc, c[0].OnlyDropIndex, c[1].OnlyCreateIndex)
+			}
+		}
+	}
 
 	// Not implemented
-	return funcList, nil
+	return funcList, downFunc, nil
 }

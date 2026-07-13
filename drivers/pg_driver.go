@@ -98,13 +98,13 @@ const (
 {{- end}}
 );`
 	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
-	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
-	AlterColumn       = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }}`
-	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN {{ .ColumnName }}`
+	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
+	AlterColumn       = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN IF EXISTS {{ .ColumnName }}`
+	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN IF EXISTS {{ .ColumnName }}`
 	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
 	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
-	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{RefColumn}}"){{if .RefOptions}}{{.RefOptions}}{{end}}`
-	DropConstraint    = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT "{{.Name}}"`
+	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT IF NOT EXISTS "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{.RefColumn}}"){{if .RefOptions}} {{.RefOptions}}{{end}}`
+	DropConstraint    = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}}"`
 )
 
 var funcMap = template.FuncMap{
@@ -290,7 +290,7 @@ func (pg *PgHandler) GetTableReferences(conf *utils.ConfigYaml, name string) ([]
 	for row.Next() {
 		err = row.Scan(&ref_name, &ref_const_def)
 		utils.CheckErrLite(err)
-		res, err := ParseDatabaseReferences(ref_name, ref_const_def)
+		res, err := ParseDatabaseReferences(name, ref_name, ref_const_def)
 		utils.CheckErrLite(err)
 		ref = append(ref, res)
 	}
@@ -557,6 +557,47 @@ func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) (string, string) {
 	sqlDown, _ = pg.CreateIndexStatement(idx)
 
 	return sqlUp, sqlDown
+}
+
+func (pg *PgHandler) OnlyCreateIndexStatement(idx *IndexMeta) string {
+	//TODO: to refactor
+	var sqlCommand bytes.Buffer
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndex)
+	utils.CheckErrLite(err)
+
+	var t = struct {
+		TableName  string
+		Name       string
+		Unique     bool
+		Type       string
+		Expression string
+		Columns    string
+	}{
+		idx.TableName,
+		idx.Name,
+		idx.Unique,
+		idx.Type,
+		idx.Columns[0].Expression,
+		idx.Columns[0].Field,
+	}
+
+	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
+		fmt.Println(err)
+	}
+	return sqlCommand.String()
+}
+
+func (pg *PgHandler) OnlyDropIndexStatement(idx *IndexMeta) string {
+	var sqlCommand bytes.Buffer
+	var sqlDown string
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndex)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, idx); err != nil {
+		fmt.Println(err)
+	}
+	sqlDown = sqlCommand.String()
+	return sqlDown
 }
 
 func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) (string, string) {

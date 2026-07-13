@@ -67,6 +67,11 @@ type Cars struct {
 	ElectricPowerKw uint16 `gorm:"null"`
 }
 
+type Owners struct {
+	Base
+	Name string
+}
+
 type Commands struct {
 	Base
 	Name  string    `gorm:"type:varchar(255);not null"`
@@ -74,6 +79,8 @@ type Commands struct {
 	CarId uuid.UUID `gorm:"type:uuid;not null"`
 	Owner string    `gorm:"type:text;null"`
 	//Description string    `gorm:"type:text;null"`
-	BudgetM float32 `gorm:"null"`
-	Cars    Cars    `gorm:"foreignKey:CarId;referenceName:commands_cars_car_id_id;constraint:OnDelete:CASCADE;"`
+	BudgetM float32   `gorm:"null"`
+	OwnerId uuid.UUID `gorm:"type:uuid;not null"`
+	Cars    Cars      `gorm:"foreignKey:CarId;referenceName:commands_cars_car_id_id;constraint:OnDelete:CASCADE;"`
+	Owners  Owners    `gorm:"foreignKey:OwnerId;referenceName:commands_owner_owner_id_id;constraint:OnDelete:CASCADE;"`
 }

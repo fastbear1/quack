@@ -24,6 +24,8 @@ type DbHandler interface {
 	DropColumnStatement(col *Column) (string, string)
 	CreateIndexStatement(idx *IndexMeta) (string, string)
 	DropIndexStatement(idx *IndexMeta) (string, string)
+	OnlyCreateIndexStatement(idx *IndexMeta) string
+	OnlyDropIndexStatement(idx *IndexMeta) string
 	CreateConstraintStatement(ref *ReferenceMeta) (string, string)
 	DropConstraintStatement(ref *ReferenceMeta) (string, string)
 }

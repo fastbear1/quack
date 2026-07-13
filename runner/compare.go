@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"github.com/docker/docker/reference"
 	d "github.com/fastbear1/quack/drivers"
 )
 
@@ -114,7 +113,7 @@ func columnSchemaChanged(left *d.Column, right *d.Column) bool {
 	return changed
 }
 
-func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.ReferenceMeta) ([]d.ReferenceMeta, []d.ReferenceMeta, []d.ReferenceMeta) {
+func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.ReferenceMeta) ([]d.ReferenceMeta, []d.ReferenceMeta, [][]d.ReferenceMeta) {
 	var retLeft, retRight []d.ReferenceMeta
 	var leftMap, rightMap = map[string]d.ReferenceMeta{}, map[string]d.ReferenceMeta{}
 	var leftNames, rightNames []string
@@ -137,12 +136,12 @@ func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.Reference
 		retLeft = append(retLeft, leftMap[rname])
 	}
 
-	var alterColumns []d.ReferenceMeta
+	var alterColumns [][]d.ReferenceMeta
 	// compare column parameters
 	for k, lv := range leftMap {
 		if rv, ok := rightMap[k]; ok {
 			if state := isReferenceSchemaChanged(&lv, &rv); state {
-				alterColumns = append(alterColumns, lv)
+				alterColumns = append(alterColumns, []d.ReferenceMeta{lv, rv})
 			}
 		}
 	}
@@ -154,6 +153,71 @@ func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.Reference
 func isReferenceSchemaChanged(l *d.ReferenceMeta, r *d.ReferenceMeta) bool {
 	if l.RefColumn != r.RefColumn || l.RefTable != r.RefTable || l.RefOptions != r.RefOptions {
 		return true
-	} 
+	}
+	return false
+}
+
+func indicesStateChanged(leftArray []d.IndexMeta, rightArray []d.IndexMeta) ([]d.IndexMeta, []d.IndexMeta, [][]d.IndexMeta) {
+	var retLeft, retRight []d.IndexMeta
+	var leftMap, rightMap = map[string]d.IndexMeta{}, map[string]d.IndexMeta{}
+	var leftNames, rightNames []string
+
+	for _, i := range leftArray {
+		leftMap[i.GetName()] = i
+		leftNames = append(leftNames, i.GetName())
+	}
+	for _, j := range rightArray {
+		rightMap[j.GetName()] = j
+		rightNames = append(rightNames, j.GetName())
+	}
+
+	missedRight, missedLeft := getCatalogData(leftNames, rightNames)
+
+	for _, lname := range missedRight {
+		retRight = append(retRight, rightMap[lname])
+	}
+	for _, rname := range missedLeft {
+		retLeft = append(retLeft, leftMap[rname])
+	}
+
+	var alterColumns [][]d.IndexMeta
+	// compare column parameters
+	for k, lv := range leftMap {
+		if rv, ok := rightMap[k]; ok {
+			if state := isIndexSchemaChanged(&lv, &rv); state {
+				alterColumns = append(alterColumns, []d.IndexMeta{lv, rv})
+			}
+		}
+	}
+
+	return retLeft, retRight, alterColumns
+
+}
+
+func isIndexSchemaChanged(l *d.IndexMeta, r *d.IndexMeta) bool {
+	if l.Unique != r.Unique || l.Type != r.Type || len(l.Columns) != len(r.Columns) {
+		return true
+	}
+	// additionaly check column in expression
+	if l.Columns[0].Expression != r.Columns[0].Expression {
+		return true
+	}
+
+	lfields := map[string]uint16{}
+	rfields := map[string]uint16{}
+
+	for _, lv := range l.Columns {
+		lfields[lv.Field] = uint16(lv.Priority)
+	}
+	for _, rv := range r.Columns {
+		rfields[rv.Field] = uint16(rv.Priority)
+	}
+
+	for lk, lv := range lfields {
+		rv, ok := rfields[lk]
+		if !ok || lv != rv {
+			return true
+		}
+	}
 	return false
 }

@@ -103,6 +103,14 @@ func (idx *IndexMeta) DropIndex(drv DbHandler) (string, string) {
 	return drv.DropIndexStatement(idx)
 }
 
+func (idx *IndexMeta) OnlyCreateIndex(drv DbHandler) string {
+	return drv.OnlyCreateIndexStatement(idx)
+}
+
+func (idx *IndexMeta) OnlyDropIndex(drv DbHandler) string {
+	return drv.OnlyDropIndexStatement(idx)
+}
+
 func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) (string, string) {
 	return drv.CreateConstraintStatement(ref)
 }

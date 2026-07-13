@@ -12,3 +12,6 @@ Tool for create goose migration files according gorm models and database schema
 
 #### Alter column
  - only data, nullable and default value checking for altering column
+
+#### parsing Index tags
+ - only unique, index type, expression and column list are used for creaeting indices. Same params used to check index state(alter index)

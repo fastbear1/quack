@@ -69,10 +69,10 @@ func Run(conf *utils.ConfigYaml) {
 	funcList, downFuncList, err := compareMetaState(dbTablesMeta, gormStructMeta)
 	utils.CheckErrLite(err)
 	var sqlUp, sqlDown []string
+
 	for _, f := range funcList {
-		up, down := f(drv)
+		up := f(drv)
 		sqlUp = append(sqlUp, up)
-		sqlDown = append(sqlDown, down)
 	}
 
 	for _, df := range downFuncList {
@@ -319,24 +319,26 @@ func transformAction(action string) string {
 	return defaultAction
 }
 
-func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) (string, string), []func(drv d.DbHandler) string, error) {
+func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) string, []func(drv d.DbHandler) string, error) {
 	var (
-		funcList []func(drv d.DbHandler) (string, string)
-		downFunc []func(drv d.DbHandler) string
-		dbmap    = map[string]d.TableMeta{}
-		gmap     = map[string]d.TableMeta{}
+		upFuncList   []func(drv d.DbHandler) string
+		downFuncList []func(drv d.DbHandler) string
+		dbmap        = map[string]d.TableMeta{}
+		gmap         = map[string]d.TableMeta{}
 	)
 
 	if len(dbmeta) == 0 {
 		// return create table for all objects in gmeta
 		for _, str := range gmeta {
-			funcList = append(funcList, str.CreateTable)
+			upFuncList = append(upFuncList, str.CreateTable)
+			downFuncList = append(downFuncList, str.DeleteTable)
 			for _, i := range str.Indeces {
-				funcList = append(funcList, i.CreateIndex)
+				upFuncList = append(upFuncList, i.CreateIndex)
+				downFuncList = append(downFuncList, i.DropIndex)
 			}
 		}
 		// job done, not enough data for comparing
-		return funcList, downFunc, nil
+		return upFuncList, downFuncList, nil
 	}
 	var (
 		left  = make([]string, 0)
@@ -358,9 +360,11 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 		for _, cr := range toCreate {
 			for _, l := range gmeta {
 				if cr == l.Name {
-					funcList = append(funcList, l.CreateTable)
+					upFuncList = append(upFuncList, l.CreateTable)
+					downFuncList = append(downFuncList, l.DeleteTable)
 					for _, idx := range l.Indeces {
-						funcList = append(funcList, idx.CreateIndex)
+						upFuncList = append(upFuncList, idx.CreateIndex)
+						downFuncList = append(downFuncList, idx.DropIndex)
 					}
 				}
 			}
@@ -369,7 +373,8 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 		for _, dt := range toDelete {
 			for _, r := range dbmeta {
 				if dt == r.Name {
-					funcList = append(funcList, r.DeleteTable)
+					upFuncList = append(upFuncList, r.DeleteTable)
+					downFuncList = append(downFuncList, r.CreateTable)
 				}
 			}
 		}
@@ -384,13 +389,16 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 		} else {
 			toCreateCol, toDeleteCol, toAlterCol := StateDifference(gtable.Columns, dbtable.Columns)
 			for _, c := range toCreateCol {
-				funcList = append(funcList, c.CreateColumn)
+				upFuncList = append(upFuncList, c.CreateColumn)
+				downFuncList = append(downFuncList, c.DeleteColumn)
 			}
 			for _, c := range toDeleteCol {
-				funcList = append(funcList, c.DeleteColumn)
+				upFuncList = append(upFuncList, c.DeleteColumn)
+				downFuncList = append(downFuncList, c.CreateColumn)
 			}
+			// TODO: toAlterCol should return both table objects, first for altering Up, second for down migration
 			for _, c := range toAlterCol {
-				funcList = append(funcList, c.AlterColumn)
+				upFuncList = append(upFuncList, c.AlterColumn)
 			}
 		}
 	}
@@ -404,13 +412,16 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 		} else {
 			toCreateRef, toDeleteRef, toAlterRef := referenceStateChanged(gtable.References, dbtable.References)
 			for _, c := range toCreateRef {
-				funcList = append(funcList, c.CreateConstraint)
+				upFuncList = append(upFuncList, c.CreateConstraint)
+				downFuncList = append(downFuncList, c.DeleteConstraint)
 			}
 			for _, c := range toDeleteRef {
-				funcList = append(funcList, c.DeleteConstraint)
+				upFuncList = append(upFuncList, c.DeleteConstraint)
+				downFuncList = append(downFuncList, c.CreateConstraint)
 			}
 			for _, c := range toAlterRef {
-				funcList = append(funcList, c[0].AlterConstraint)
+				upFuncList = append(upFuncList, c[1].DeleteConstraint, c[0].CreateConstraint)
+				downFuncList = append(downFuncList, c[0].DeleteConstraint, c[1].CreateConstraint)
 			}
 		}
 	}
@@ -423,18 +434,20 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 		} else {
 			toCreateIdx, toDeleteIdx, toAlterIdx := indicesStateChanged(gtable.Indeces, dbtable.Indeces)
 			for _, c := range toCreateIdx {
-				funcList = append(funcList, c.CreateIndex)
+				upFuncList = append(upFuncList, c.CreateIndex)
+				downFuncList = append(downFuncList, c.DropIndex)
 			}
 			for _, c := range toDeleteIdx {
-				funcList = append(funcList, c.DropIndex)
+				upFuncList = append(upFuncList, c.DropIndex)
+				downFuncList = append(downFuncList, c.CreateIndex)
 			}
 			for _, c := range toAlterIdx {
-				funcList = append(funcList, c[0].CreateIndex)
-				downFunc = append(downFunc, c[0].OnlyDropIndex, c[1].OnlyCreateIndex)
+				upFuncList = append(upFuncList, c[1].DropIndex, c[0].CreateIndex)
+				downFuncList = append(downFuncList, c[0].DropIndex, c[1].CreateIndex)
 			}
 		}
 	}
 
 	// Not implemented
-	return funcList, downFunc, nil
+	return upFuncList, downFuncList, nil
 }

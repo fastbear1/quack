@@ -344,9 +344,8 @@ func (pg *PgHandler) TransformDefault(columnType string, columnDefault string) s
 	return defValue
 }
 
-func (pg *PgHandler) CreateTableStatement(t *TableMeta) (string, string) {
+func (pg *PgHandler) CreateTableStatement(t *TableMeta) string {
 	var sqlCommand bytes.Buffer
-	var sqlUp, sqlDown string
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTemaplete)
 	utils.CheckErrLite(err)
 
@@ -368,23 +367,11 @@ func (pg *PgHandler) CreateTableStatement(t *TableMeta) (string, string) {
 	if err := masterTmpl.Execute(&sqlCommand, ft); err != nil {
 		fmt.Println(err)
 	}
-	sqlUp = sqlCommand.String()
-
-	// create down statement
-	sqlCommand.Reset()
-	deleteTmpl, err := template.New("delete").Parse(DropTableTemplate)
-	utils.CheckErrLite(err)
-
-	if err := deleteTmpl.Execute(&sqlCommand, t); err != nil {
-		fmt.Println(err)
-	}
-	sqlDown = sqlCommand.String()
-	return sqlUp, sqlDown
+	return sqlCommand.String()
 }
 
-func (pg *PgHandler) DropTableStatement(t *TableMeta) (string, string) {
+func (pg *PgHandler) DropTableStatement(t *TableMeta) string {
 	var sqlCommand bytes.Buffer
-	var sqlUp, sqlDown string
 
 	deleteTmpl, err := template.New("delete").Parse(DropTableTemplate)
 	utils.CheckErrLite(err)
@@ -392,47 +379,41 @@ func (pg *PgHandler) DropTableStatement(t *TableMeta) (string, string) {
 	if err := deleteTmpl.Execute(&sqlCommand, t); err != nil {
 		fmt.Println(err)
 	}
-	sqlUp = sqlCommand.String()
-
-	sqlDown, _ = pg.CreateTableStatement(t)
-	return sqlUp, sqlDown
+	return sqlCommand.String()
 }
 
-func (pg *PgHandler) CreateColumnStatement(col *Column) (string, string) {
-	var sqlUp, sqlDown string
-	sqlUp = getCreateColumnCommand(col)
-	sqlDown = getDropColumnCommand(col)
-	return sqlUp, sqlDown
-}
-
-func (pg *PgHandler) AlterColumnStatement(col *Column) (string, string) {
-	var sqlUp, sqlDown string
-	sqlUp = getAlterColumnCommand(col, false)
-
-	// declate temporary strict for downgrade alter command
-	var data = AlterData{
-		TableName:     col.TableName,
-		ColumnName:    col.ColumnName,
-		Type:          col.AlterState.Type,
-		DataType:      col.AlterState.DataType,
-		IsNullable:    col.AlterState.IsNullable,
-		ColumnDefault: col.AlterState.ColumnDefault,
-	}
-	sqlDown = getAlterColumnCommand(&data, true)
-
-	return sqlUp, sqlDown
-}
-
-func (pg *PgHandler) DropColumnStatement(col *Column) (string, string) {
-	var sqlUp, sqlDown string
-	sqlUp = getDropColumnCommand(col)
-	sqlDown = getCreateColumnCommand(col)
-	return sqlUp, sqlDown
-}
-
-func getCreateColumnCommand(col *Column) string {
+func (pg *PgHandler) CreateColumnStatement(col *Column) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateColumn)
+	utils.CheckErrLite(err)
+
+	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
+		fmt.Println(err)
+	}
+	return sqlCommand.String()
+}
+
+func (pg *PgHandler) AlterColumnStatement(col *Column) string {
+	return getAlterColumnCommand(col, false)
+
+	// declate temporary strict for downgrade alter command
+
+	/*
+		var data = AlterData{
+			TableName:     col.TableName,
+			ColumnName:    col.ColumnName,
+			Type:          col.AlterState.Type,
+			DataType:      col.AlterState.DataType,
+			IsNullable:    col.AlterState.IsNullable,
+			ColumnDefault: col.AlterState.ColumnDefault,
+		}
+		sqlDown = getAlterColumnCommand(&data, true)
+	*/
+}
+
+func (pg *PgHandler) DropColumnStatement(col *Column) string {
+	var sqlCommand bytes.Buffer
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropColumn)
 	utils.CheckErrLite(err)
 
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
@@ -490,76 +471,7 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 	return sql
 }
 
-func getDropColumnCommand(col *Column) string {
-	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropColumn)
-	utils.CheckErrLite(err)
-
-	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
-		fmt.Println(err)
-	}
-	return sqlCommand.String()
-}
-
-func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) (string, string) {
-	//TODO: to refactor
-	var sqlCommand bytes.Buffer
-	var sqlUp, sqlDown string
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndex)
-	utils.CheckErrLite(err)
-
-	var t = struct {
-		TableName  string
-		Name       string
-		Unique     bool
-		Type       string
-		Expression string
-		Columns    string
-	}{
-		idx.TableName,
-		idx.Name,
-		idx.Unique,
-		idx.Type,
-		idx.Columns[0].Expression,
-		idx.Columns[0].Field,
-	}
-
-	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
-		fmt.Println(err)
-	}
-	sqlUp = sqlCommand.String()
-
-	// create down statement
-	sqlCommand.Reset()
-	deleteTmpl, err := template.New("delete").Parse(DropIndex)
-	utils.CheckErrLite(err)
-
-	if err := deleteTmpl.Execute(&sqlCommand, idx); err != nil {
-		fmt.Println(err)
-	}
-	sqlDown = sqlCommand.String()
-
-	return sqlUp, sqlDown
-}
-
-func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) (string, string) {
-	var sqlCommand bytes.Buffer
-	var sqlUp, sqlDown string
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndex)
-	utils.CheckErrLite(err)
-
-	if err := masterTmpl.Execute(&sqlCommand, idx); err != nil {
-		fmt.Println(err)
-	}
-	sqlUp = sqlCommand.String()
-
-	// create re-up statement
-	sqlDown, _ = pg.CreateIndexStatement(idx)
-
-	return sqlUp, sqlDown
-}
-
-func (pg *PgHandler) OnlyCreateIndexStatement(idx *IndexMeta) string {
+func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) string {
 	//TODO: to refactor
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndex)
@@ -587,55 +499,34 @@ func (pg *PgHandler) OnlyCreateIndexStatement(idx *IndexMeta) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) OnlyDropIndexStatement(idx *IndexMeta) string {
+func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) string {
 	var sqlCommand bytes.Buffer
-	var sqlDown string
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndex)
 	utils.CheckErrLite(err)
-
 	if err := masterTmpl.Execute(&sqlCommand, idx); err != nil {
 		fmt.Println(err)
 	}
-	sqlDown = sqlCommand.String()
-	return sqlDown
+	return sqlCommand.String()
 }
 
-func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) (string, string) {
+func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) string {
 	var sqlCommand bytes.Buffer
-	var sqlUp, sqlDown string = "", ""
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateConstraint)
 	utils.CheckErrLite(err)
-	downTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraint)
-
 	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
 		fmt.Println(err)
 	}
-
-	sqlUp = sqlCommand.String()
-	sqlCommand.Reset()
-
-	if err := downTmpl.Execute(&sqlCommand, ref); err != nil {
-		fmt.Println(err)
-	}
-	sqlDown = sqlCommand.String()
-
-	return sqlUp, sqlDown
+	return sqlCommand.String()
 }
 
-func (pg *PgHandler) DropConstraintStatement(ref *ReferenceMeta) (string, string) {
+func (pg *PgHandler) DropConstraintStatement(ref *ReferenceMeta) string {
 	var sqlCommand bytes.Buffer
-	var sqlUp, sqlDown string = "", ""
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraint)
 	utils.CheckErrLite(err)
-
 	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
 		fmt.Println(err)
 	}
-
-	sqlUp = sqlCommand.String()
-	sqlDown, _ = pg.CreateConstraintStatement(ref)
-
-	return sqlUp, sqlDown
+	return sqlCommand.String()
 }
 
 // helpers

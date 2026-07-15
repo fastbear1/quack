@@ -75,50 +75,38 @@ func (t TableMeta) GetName() string {
 }
 
 // SQL commands
-func (table *TableMeta) CreateTable(drv DbHandler) (string, string) {
+func (table *TableMeta) CreateTable(drv DbHandler) string {
 	return drv.CreateTableStatement(table)
 }
 
-func (table *TableMeta) DeleteTable(drv DbHandler) (string, string) {
+func (table *TableMeta) DeleteTable(drv DbHandler) string {
 	return drv.DropTableStatement(table)
 }
 
-func (col *Column) CreateColumn(drv DbHandler) (string, string) {
+func (col *Column) CreateColumn(drv DbHandler) string {
 	return drv.CreateColumnStatement(col)
 }
 
-func (col *Column) AlterColumn(drv DbHandler) (string, string) {
+func (col *Column) AlterColumn(drv DbHandler) string {
 	return drv.AlterColumnStatement(col)
 }
 
-func (col *Column) DeleteColumn(drv DbHandler) (string, string) {
+func (col *Column) DeleteColumn(drv DbHandler) string {
 	return drv.DropColumnStatement(col)
 }
 
-func (idx *IndexMeta) CreateIndex(drv DbHandler) (string, string) {
+func (idx *IndexMeta) CreateIndex(drv DbHandler) string {
 	return drv.CreateIndexStatement(idx)
 }
 
-func (idx *IndexMeta) DropIndex(drv DbHandler) (string, string) {
+func (idx *IndexMeta) DropIndex(drv DbHandler) string {
 	return drv.DropIndexStatement(idx)
 }
 
-func (idx *IndexMeta) OnlyCreateIndex(drv DbHandler) string {
-	return drv.OnlyCreateIndexStatement(idx)
-}
-
-func (idx *IndexMeta) OnlyDropIndex(drv DbHandler) string {
-	return drv.OnlyDropIndexStatement(idx)
-}
-
-func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) (string, string) {
+func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) string {
 	return drv.CreateConstraintStatement(ref)
 }
 
-func (ref *ReferenceMeta) AlterConstraint(drv DbHandler) (string, string) {
-	return drv.CreateConstraintStatement(ref)
-}
-
-func (ref *ReferenceMeta) DeleteConstraint(drv DbHandler) (string, string) {
+func (ref *ReferenceMeta) DeleteConstraint(drv DbHandler) string {
 	return drv.DropConstraintStatement(ref)
 }

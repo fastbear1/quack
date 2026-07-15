@@ -17,17 +17,15 @@ type DbHandler interface {
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string
 	TransformDefault(col_type string, val string) string
-	CreateTableStatement(table *TableMeta) (string, string)
-	DropTableStatement(table *TableMeta) (string, string)
-	CreateColumnStatement(col *Column) (string, string)
-	AlterColumnStatement(col *Column) (string, string)
-	DropColumnStatement(col *Column) (string, string)
-	CreateIndexStatement(idx *IndexMeta) (string, string)
-	DropIndexStatement(idx *IndexMeta) (string, string)
-	OnlyCreateIndexStatement(idx *IndexMeta) string
-	OnlyDropIndexStatement(idx *IndexMeta) string
-	CreateConstraintStatement(ref *ReferenceMeta) (string, string)
-	DropConstraintStatement(ref *ReferenceMeta) (string, string)
+	CreateTableStatement(table *TableMeta) string
+	DropTableStatement(table *TableMeta) string
+	CreateColumnStatement(col *Column) string
+	AlterColumnStatement(col *Column) string
+	DropColumnStatement(col *Column) string
+	CreateIndexStatement(idx *IndexMeta) string
+	DropIndexStatement(idx *IndexMeta) string
+	CreateConstraintStatement(ref *ReferenceMeta) string
+	DropConstraintStatement(ref *ReferenceMeta) string
 }
 
 func GetDriver(db_type string) (DbHandler, error) {

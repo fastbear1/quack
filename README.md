@@ -1,5 +1,5 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
-[![Status](https://img.shields.io/badge/beta-0.42.1-blue)](https://github.com/fastbear1/quack/releases)
+[![Status](https://img.shields.io/badge/beta-0.42.3-blue)](https://github.com/fastbear1/quack/releases)
 [![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
 
 # quack
@@ -145,8 +145,8 @@ After file was created and checked use goose migration tool for applying newest 
    ```go
        type Command struct {
             Base
-	        Name  string    `gorm:"type:varchar(255);not null"`
-	        Cid   uuid.UUID `gorm:"type:uuid;index;indexName:commands_cars_cid__id;default:uuidv4()"`
+	        Name  string      `gorm:"type:varchar(255);not null"`
+	        Cid   uuid.UUID   `gorm:"type:uuid;index;indexName:commands_cars_cid__id;default:uuidv4()"`
 	        OwnerId uuid.UUID `gorm:"type:uuid;not null"`
 	        Owners  Owners    `gorm:"foreignKey:OwnerId;referenceName:commands_owner_owner_id_id;constraint:OnDelete:CASCADE;"`
         } 

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strings"
 
 	utils "github.com/fastbear1/quack/internal"
 	proc "github.com/fastbear1/quack/runner"
@@ -64,7 +65,14 @@ func main() {
 			fmt.Println(todoList)
 		case "run":
 			fmt.Println("Quacking migration file")
-			proc.Run(conf)
+			var fileName string
+			if len(commands) > 1 {
+				fileName = strings.ToLower(commands[1])
+			} else {
+				fmt.Println("Filename not provides. Using default name 'goose_file'")
+				fileName = "goose_file"
+			}
+			proc.Run(conf, fileName)
 		default:
 			fmt.Println("Unknown command, use help to view run exmaples")
 		}

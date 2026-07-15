@@ -3,7 +3,7 @@
 [![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
 
 # quack
-Tool for auto creating goose migration files according to gorm models and database schema. This project was inspired by python alembic tool.
+Tool for auto creating [goose migration](https://github.com/pressly/goose) files according to gorm models and database schema. This project was inspired by python alembic tool.
 
 # DISCLAIMER: 
 **Always check migration file before applaying it even if everything looks fine**

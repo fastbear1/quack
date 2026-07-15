@@ -9,8 +9,8 @@ import (
 	utils "github.com/fastbear1/quack/internal"
 )
 
-func writeToFile(conf *utils.ConfigYaml, sqlUp []string, sqlDown []string) {
-	path := fmt.Sprintf("./%s/%d_goose_file.sql", conf.Migrations.Path, time.Now().Unix())
+func writeToFile(conf *utils.ConfigYaml, fileName string, sqlUp []string, sqlDown []string) {
+	path := fmt.Sprintf("./%s/%d_%s.sql", conf.Migrations.Path, time.Now().Unix(), fileName)
 	f, err := os.Create(path)
 	utils.CheckErrLite(err)
 	w := bufio.NewWriter(f)

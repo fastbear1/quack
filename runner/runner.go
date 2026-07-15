@@ -9,7 +9,7 @@ import (
 	utils "github.com/fastbear1/quack/internal"
 )
 
-func Run(conf *utils.ConfigYaml) {
+func Run(conf *utils.ConfigYaml, fileName string) {
 	// step 1: check connection to database
 	var dbTablesMeta []d.TableMeta
 
@@ -82,7 +82,7 @@ func Run(conf *utils.ConfigYaml) {
 
 	// step 4: Write sql- Up and Down commands to file
 	if len(sqlUp) != 0 || len(sqlDown) != 0 {
-		writeToFile(conf, sqlUp, sqlDown)
+		writeToFile(conf, fileName, sqlUp, sqlDown)
 	} else {
 		fmt.Println("Gorm struct and DB tables already synchronized")
 	}

@@ -1,3 +1,7 @@
+[![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
+[![Statuc](https://img.shields.io/badge/beta-0.42.1-blue)]
+[![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
+
 # quack
 Tool for auto creating goose migration files according to gorm models and database schema. This project was inspired by python alembic tool.
 

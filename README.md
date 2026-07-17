@@ -1,5 +1,5 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
-[![Status](https://img.shields.io/badge/beta-0.42.3-blue)](https://github.com/fastbear1/quack/releases)
+[![Status](https://img.shields.io/badge/beta-0.43.1-blue)](https://github.com/fastbear1/quack/releases)
 [![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
 
 # quack

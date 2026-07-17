@@ -24,7 +24,7 @@ Commands:
   - help - show help information
   - version - show current version(can be used for checking config file)
   command usage example:
-    - quack help - show help ation
+    - quack help - show help information
     - quack run - run creating a new migration files
 flags:
   - models - directory where all gorm struct models live
@@ -59,13 +59,13 @@ func main() {
 			code := proc.Run(ctx, conf, fileName)
 			os.Exit(int(code))
 		case "version":
-			fmt.Println("Quack version: 0.43.1")
+			fmt.Println("Quack version: 0.43.2")
 		default:
 			fmt.Println("Unknown command, use help to view run examples")
 			fmt.Println(usageInfo)
 		}
 	} else {
-		fmt.Println("Any command presented, use 'quack help' command to view usege information")
+		fmt.Println("No command provided, use 'quack help' command to view usage information")
 		fmt.Println(usageInfo)
 	}
 }
@@ -81,10 +81,10 @@ func ParseFlags() *utils.ConfigYaml {
 	flag.Var(&conf.Models.Path, "models", "path to gorm models")
 	flag.Var(&conf.Database.Uri, "uri", "database URI")
 	flag.Var(&conf.Database.Name, "dbname", "database name")
-	flag.Var(&conf.Migrations.Path, "path", "path tp directory with migration files")
+	flag.Var(&conf.Migrations.Path, "path", "path to directory with migration files")
 
-	flag.Var(&conf.Models.Exclude, "exclude", "Exlude gorm models")
-	flag.Var(&conf.Database.Exclude, "db-exclude", "Exlude db tables")
+	flag.Var(&conf.Models.Exclude, "exclude", "Exclude gorm models")
+	flag.Var(&conf.Database.Exclude, "db-exclude", "Exclude db tables")
 
 	flag.Parse()
 

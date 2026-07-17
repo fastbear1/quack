@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	utils "github.com/fastbear1/quack/internal"
@@ -10,34 +12,19 @@ import (
 )
 
 const (
-	todoList = `TODO:
-- parse config file
-- parse command line args
-- parse command line flags
-- code structure
-- two way compare state algorithm
-- new lines in migration file
-- create index statement
-- create constraint statement
-- parse all gorm tags
-- Readme file
-- tests for code function
-- intergation tests with additional data files
-- yaml config file parser
-- parser for input args
-- interface for all tables, column , index, constraints 
-- independent drivers`
-
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 
-information and database state. Use config file quack_config.yaml for running params.
-Uasge:
-  quack [flags] command
+information and database state. Use config file quack_config.yaml for running params.`
+	usageInfo = `
+Usage:
+  quack [flags] command filename[optional]
+
+filename is optional, if not provided default name will be used for migration file.
 Commands:
   - run - quack(run and create) goose migration file
   - help - show help information
   - version - show current version(can be used for checking config file)
   command usage example:
-    - quack help - show help information
+    - quack help - show help ation
     - quack run - run creating a new migration files
 flags:
   - models - directory where all gorm struct models live
@@ -48,48 +35,47 @@ flags:
   - db-exclude - exclude database tables(for example goose_migrations table)
   flag usage examples:
     - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run
-    - quack --modesl=internal/models --path=models --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run`
+    - quack --models=internal/models --path=models --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run`
 )
 
 func main() {
 	conf := ParseFlags()
-
-	// check commands
-	var commands []string = flag.Args()
-
+	commands := flag.Args()
 	if len(commands) > 0 {
 		switch commands[0] {
 		case "help":
 			fmt.Println(helpInfo)
-		case "todo":
-			fmt.Println(todoList)
+			fmt.Println(usageInfo)
 		case "run":
 			fmt.Println("Quacking migration file")
 			var fileName string
 			if len(commands) > 1 {
 				fileName = strings.ToLower(commands[1])
 			} else {
-				fmt.Println("Filename not provides. Using default name 'goose_file'")
+				fmt.Println("Filename not provided. Using default name 'goose_file'")
 				fileName = "goose_file"
 			}
-			proc.Run(conf, fileName)
+			ctx := context.Background()
+			code := proc.Run(ctx, conf, fileName)
+			os.Exit(int(code))
+		case "version":
+			fmt.Println("Quack version: 0.43.1")
 		default:
-			fmt.Println("Unknown command, use help to view run exmaples")
+			fmt.Println("Unknown command, use help to view run examples")
+			fmt.Println(usageInfo)
 		}
 	} else {
-		fmt.Println("Any command presented, use help to view usefull information")
+		fmt.Println("Any command presented, use 'quack help' command to view usege information")
+		fmt.Println(usageInfo)
 	}
 }
 
 func ParseFlags() *utils.ConfigYaml {
 	var conf utils.ConfigYaml
 
-	// Defualt database is postgres. Support for other database currently not implemented
-	conf.Database.Type = "postgres"
-
 	notFound := conf.ReadConfig()
 	if notFound != nil {
-		fmt.Println("Can't find config file quack_config.yaml")
+		fmt.Printf("Can't find config file quack_config.yaml: %s\n", notFound)
 	}
 
 	flag.Var(&conf.Models.Path, "models", "path to gorm models")
@@ -103,9 +89,10 @@ func ParseFlags() *utils.ConfigYaml {
 	flag.Parse()
 
 	if notFound != nil {
-		if conf.Database.Uri == "" || conf.Database.Name == "" || conf.Models.Path == "" && conf.Migrations.Path == "" {
+		if conf.Database.Uri == "" || conf.Database.Name == "" || (conf.Models.Path == "" && conf.Migrations.Path == "") {
 			fmt.Println("Please provide all mandatory params(uri, models, dbname and path), using flags or configuration file")
-			panic("Exiting....")
+			fmt.Println(usageInfo)
+			os.Exit(1)
 		}
 	}
 	return &conf

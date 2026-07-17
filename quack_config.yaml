@@ -1,4 +1,4 @@
-version:: 1
+version: 0.1
 database:
   uri: "postgres://stexp:1!password!2@postgres:5432/stexp"
   name: "stexp"

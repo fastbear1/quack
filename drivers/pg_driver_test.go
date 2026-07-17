@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	utils "github.com/fastbear1/quack/internal"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 )
@@ -105,7 +106,6 @@ func TestTransformNullToString(t *testing.T) {
 
 // Tests for SQL creation methods
 func TestCreaetTabelStatement(t *testing.T) {
-	// &{simple_table [{id uuid false gen_random_uuid() true } {name varchar(255) false  false } {sid smallint false  false } {email varchar(255) false  false } {status varchar(10) false active false } {name_t varchar(255) false  false } {created_at timestamp false now() false } {updated_at timestamp false now() false }] [] []}
 	var test = []struct {
 		name      string
 		tablemeta TableMeta
@@ -161,9 +161,13 @@ func TestCreaetTabelStatement(t *testing.T) {
 		},
 	}
 
+	conf := utils.ConfigYaml{}
+	conf.ReadConfig()
+
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
-			sqlUp, sqlDown := (&PgHandler{}).CreateTableStatement(&tt.tablemeta)
+			sqlUp := (&PgHandler{}).CreateTableStatement(&tt.tablemeta)
+			sqlDown := (&PgHandler{}).DropTableStatement(&tt.tablemeta)
 			assert.Equal(t, sqlUp, tt.expect[0])
 			assert.Equal(t, sqlDown, tt.expect[1])
 		})

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,7 +10,7 @@ import (
 	utils "github.com/fastbear1/quack/internal"
 )
 
-func Run(conf *utils.ConfigYaml, fileName string) {
+func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	// step 1: check connection to database
 	var dbTablesMeta []d.TableMeta
 
@@ -86,6 +87,8 @@ func Run(conf *utils.ConfigYaml, fileName string) {
 	} else {
 		fmt.Println("Gorm struct and DB tables already synchronized")
 	}
+
+	return 0
 }
 
 func parseModelStruct(data ModelStruct, drv d.DbHandler) d.TableMeta {

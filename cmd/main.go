@@ -11,6 +11,8 @@ import (
 	proc "github.com/fastbear1/quack/runner"
 )
 
+const version string = "0.22.1"
+
 const (
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 
 information and database state. Use config file quack_config.yaml for running params.`
@@ -59,7 +61,7 @@ func main() {
 			code := proc.Run(ctx, conf, fileName)
 			os.Exit(int(code))
 		case "version":
-			fmt.Println("Quack version: 0.43.2")
+			fmt.Println(version)
 		default:
 			fmt.Println("Unknown command, use help to view run examples")
 			fmt.Println(usageInfo)

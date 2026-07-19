@@ -116,8 +116,7 @@ var funcMap = template.FuncMap{
 // Database driver for postgres
 type PgHandler struct{}
 
-func (pg *PgHandler) GetTablesList(conf *utils.ConfigYaml) ([]string, error) {
-	ctx := context.Background()
+func (pg *PgHandler) GetTablesList(ctx context.Context, conf *utils.ConfigYaml) ([]string, error) {
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
 	if err != nil {
 		return []string{}, err
@@ -127,7 +126,7 @@ func (pg *PgHandler) GetTablesList(conf *utils.ConfigYaml) ([]string, error) {
 	// get tables list
 	dbtables, err := getDbTables(conf, ctx, conn)
 	if err != nil {
-		return []string{}, nil
+		return []string{}, err
 	}
 	return dbtables, nil
 }
@@ -161,9 +160,8 @@ func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([
 	return tables, err
 }
 
-func (pg *PgHandler) GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([]Column, error) {
+func (pg *PgHandler) GetTableColumnsMeta(ctx context.Context, conf *utils.ConfigYaml, name string) ([]Column, error) {
 	var res = []Column{}
-	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
 	if err != nil {
 		return []Column{}, err
@@ -234,8 +232,7 @@ func (pg *PgHandler) GetPrimaryKeyColumn(conn *pgx.Conn, ctx context.Context, ta
 	return pk_const_name, pk_column_name
 }
 
-func (pg *PgHandler) GetTableIndices(conf *utils.ConfigYaml, name string) ([]IndexMeta, error) {
-	ctx := context.Background()
+func (pg *PgHandler) GetTableIndices(ctx context.Context, conf *utils.ConfigYaml, name string) ([]IndexMeta, error) {
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
 	var idxt []IndexMeta
 
@@ -266,8 +263,7 @@ func (pg *PgHandler) GetTableIndices(conf *utils.ConfigYaml, name string) ([]Ind
 	return idxt, nil
 }
 
-func (pg *PgHandler) GetTableReferences(conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error) {
-	ctx := context.Background()
+func (pg *PgHandler) GetTableReferences(ctx context.Context, conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error) {
 	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
 	var ref []ReferenceMeta
 

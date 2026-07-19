@@ -10,17 +10,25 @@ import (
 	d "github.com/fastbear1/quack/internal/drivers"
 )
 
+// quacking migration file pipeline
 func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	// step 1: check connection to database
 	var dbTablesMeta []d.TableMeta
 
 	drv, err := d.GetDriver(conf.Database.Type)
-	utils.CheckErrLite(err)
+	if err != nil {
+		fmt.Printf("Error occured in proccess of getting database driver: %s", err)
+		return 1
+	}
 
 	// step 1.1: get avaiable tables from database
-	dbTables, err := drv.GetTablesList(conf)
-	fmt.Println(dbTables)
-	utils.CheckErrLite(err)
+	dbTables, err := drv.GetTablesList(ctx, conf)
+	if err != nil {
+		fmt.Printf("Error occured while getting tables list: %s", err)
+		return 1
+	}
+	// debug printing
+	// fmt.Println(dbTables)
 	for _, tableName := range dbTables {
 		dbTablesMeta = append(dbTablesMeta,
 			d.TableMeta{
@@ -28,18 +36,28 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 			},
 		)
 	}
-	// step 1.2: get table columns meta data
+
+	// step 1.2: get table columns, indices and constraint information
 	for i := 0; i < len(dbTablesMeta); i++ {
-		res, err := drv.GetTableColumnsMeta(conf, dbTablesMeta[i].Name)
-		utils.CheckErrLite(err)
+		res, err := drv.GetTableColumnsMeta(ctx, conf, dbTablesMeta[i].Name)
+		if err != nil {
+			fmt.Printf("Error occured while getting tables column list: %s", err)
+			return 1
+		}
 		dbTablesMeta[i].Columns = res
 		// step 1.3: get table indices information
-		idx, err := drv.GetTableIndices(conf, dbTablesMeta[i].Name)
-		utils.CheckErrLite(err)
+		idx, err := drv.GetTableIndices(ctx, conf, dbTablesMeta[i].Name)
+		if err != nil {
+			fmt.Printf("Error occured while getting indices list: %s", err)
+			return 1
+		}
 		dbTablesMeta[i].Indeces = idx
 		// step 1.4: get table references
-		ref, err := drv.GetTableReferences(conf, dbTablesMeta[i].Name)
-		utils.CheckErrLite(err)
+		ref, err := drv.GetTableReferences(ctx, conf, dbTablesMeta[i].Name)
+		if err != nil {
+			fmt.Printf("Error occured while getting constraint list: %s", err)
+			return 1
+		}
 		dbTablesMeta[i].References = ref
 	}
 
@@ -47,7 +65,10 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	var gormStructMeta []d.TableMeta
 
 	StructRaw, err := Scan(conf)
-	utils.CheckErrLite(err)
+	if err != nil {
+		fmt.Printf("Error parsing directory with gorm models: %s", err)
+		return 1
+	}
 
 	for i := 0; i < len(StructRaw); i++ {
 		// step 2.1: get gorm tables metadata
@@ -67,21 +88,17 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	}
 
 	// step3: Compare current state of metadata for database tables and gorm structures
-	funcList, downFuncList, err := compareMetaState(dbTablesMeta, gormStructMeta)
-	utils.CheckErrLite(err)
+	funcList, downFuncList := compareMetaState(dbTablesMeta, gormStructMeta)
 	var sqlUp, sqlDown []string
 
-	for _, f := range funcList {
-		up := f(drv)
-		sqlUp = append(sqlUp, up)
+	for _, fup := range funcList {
+		sqlUp = append(sqlUp, fup(drv))
+	}
+	for _, fdown := range downFuncList {
+		sqlDown = append(sqlDown, fdown(drv))
 	}
 
-	for _, df := range downFuncList {
-		down := df(drv)
-		sqlDown = append(sqlDown, down)
-	}
-
-	// step 4: Write sql- Up and Down commands to file
+	// step 4: Write sql-Up and sql-Down commands to file
 	if len(sqlUp) != 0 || len(sqlDown) != 0 {
 		writeToFile(conf, fileName, sqlUp, sqlDown)
 	} else {
@@ -322,7 +339,7 @@ func transformAction(action string) string {
 	return defaultAction
 }
 
-func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) string, []func(drv d.DbHandler) string, error) {
+func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) string, []func(drv d.DbHandler) string) {
 	var (
 		upFuncList   []func(drv d.DbHandler) string
 		downFuncList []func(drv d.DbHandler) string
@@ -341,7 +358,7 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 			}
 		}
 		// job done, not enough data for comparing
-		return upFuncList, downFuncList, nil
+		return upFuncList, downFuncList
 	}
 	var (
 		left  = make([]string, 0)
@@ -452,5 +469,5 @@ func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.D
 	}
 
 	// Not implemented
-	return upFuncList, downFuncList, nil
+	return upFuncList, downFuncList
 }

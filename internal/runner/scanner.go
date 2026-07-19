@@ -145,7 +145,7 @@ func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 
 	if err != nil {
 		fmt.Println("Error parsing directory:", err)
-		return []ModelStruct{}, nil
+		return []ModelStruct{}, err
 	}
 
 	// Map to hold package files.

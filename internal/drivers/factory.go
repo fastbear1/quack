@@ -1,6 +1,7 @@
 package drivers
 
 import (
+	"context"
 	"errors"
 
 	utils "github.com/fastbear1/quack/internal"
@@ -9,10 +10,10 @@ import (
 var ErrNotFound = errors.New("resource not found. Can't find proper database handler")
 
 type DbHandler interface {
-	GetTablesList(conf *utils.ConfigYaml) ([]string, error)
-	GetTableColumnsMeta(conf *utils.ConfigYaml, name string) ([]Column, error)
-	GetTableIndices(conf *utils.ConfigYaml, name string) ([]IndexMeta, error)
-	GetTableReferences(conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error)
+	GetTablesList(ctx context.Context, conf *utils.ConfigYaml) ([]string, error)
+	GetTableColumnsMeta(ctx context.Context, conf *utils.ConfigYaml, name string) ([]Column, error)
+	GetTableIndices(ctx context.Context, conf *utils.ConfigYaml, name string) ([]IndexMeta, error)
+	GetTableReferences(ctx context.Context, conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error)
 	TransformName(name string) string
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string

@@ -6,7 +6,7 @@ TODAY=$(shell date +'%Y-%m-%d 00:00')
 
 test:
 	@cp ./misc/quack_config_test.yaml ./quack_config.yaml
-	@go test -v ./cmd ./internal ./drivers ./runner
+	@go test -v ./cmd ./internal ./internal/drivers ./internal/runner
 	@cp ./misc/quack_config_original.yaml ./quack_config.yaml
 
 version:

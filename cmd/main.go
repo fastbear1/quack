@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 
 	utils "github.com/fastbear1/quack/internal"
 	proc "github.com/fastbear1/quack/runner"
 )
 
-const version string = "0.22.1"
+const version string = "0.23.1"
 
 const (
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 
@@ -57,6 +58,9 @@ func main() {
 				fmt.Println("Filename not provided. Using default name 'goose_file'")
 				fileName = "goose_file"
 			}
+			if !isConfigValid(conf) {
+				os.Exit(int(syscall.EINVAL))
+			}
 			ctx := context.Background()
 			code := proc.Run(ctx, conf, fileName)
 			os.Exit(int(code))
@@ -98,4 +102,15 @@ func ParseFlags() *utils.ConfigYaml {
 		}
 	}
 	return &conf
+}
+
+func isConfigValid(conf *utils.ConfigYaml) bool {
+	// validate database Uri
+	dbUriParts := strings.Split(conf.Database.Uri.String(), ":")
+	fmt.Println(dbUriParts)
+	if len(dbUriParts) == 1 {
+		return false
+	}
+	conf.Database.Type = dbUriParts[0]
+	return true
 }

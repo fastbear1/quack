@@ -1,7 +1,7 @@
 package runner
 
 import (
-	d "github.com/fastbear1/quack/drivers"
+	d "github.com/fastbear1/quack/internal/drivers"
 )
 
 /*

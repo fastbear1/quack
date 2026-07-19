@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	d "github.com/fastbear1/quack/drivers"
 	utils "github.com/fastbear1/quack/internal"
+	d "github.com/fastbear1/quack/internal/drivers"
 )
 
 func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {

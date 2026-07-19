@@ -9,10 +9,10 @@ import (
 	"syscall"
 
 	utils "github.com/fastbear1/quack/internal"
-	proc "github.com/fastbear1/quack/runner"
+	proc "github.com/fastbear1/quack/internal/runner"
 )
 
-const version string = "0.23.1"
+const version string = "0.23.2"
 
 const (
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 
@@ -107,7 +107,6 @@ func ParseFlags() *utils.ConfigYaml {
 func isConfigValid(conf *utils.ConfigYaml) bool {
 	// validate database Uri
 	dbUriParts := strings.Split(conf.Database.Uri.String(), ":")
-	fmt.Println(dbUriParts)
 	if len(dbUriParts) == 1 {
 		return false
 	}

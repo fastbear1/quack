@@ -32,7 +32,7 @@ func (s *StringList) Set(value string) error {
 	return nil
 }
 
-// main config struct
+// config struct
 type ConfigYaml struct {
 	Version  float32 `yaml:"version"`
 	Database struct {
@@ -48,6 +48,8 @@ type ConfigYaml struct {
 	Migrations struct {
 		Path StringVal `yaml:"path"`
 	} `yaml:"migrations"`
+	Silent  bool
+	Verbose bool
 }
 
 func (conf *ConfigYaml) ReadConfig() error {

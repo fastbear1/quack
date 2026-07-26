@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -11,8 +12,14 @@ import (
 
 func writeToFile(conf *utils.ConfigYaml, fileName string, sqlUp []string, sqlDown []string) {
 	path := fmt.Sprintf("./%s/%d_%s.sql", conf.Migrations.Path, time.Now().Unix(), fileName)
-	f, err := os.Create(path)
-	utils.CheckErrLite(err)
+	var f io.Writer
+	var err error
+	if !conf.Silent {
+		f, err = os.Create(path)
+		utils.CheckErrLite(err)
+	} else {
+		f = os.Stdout
+	}
 	w := bufio.NewWriter(f)
 	_, err = w.WriteString("-- +goose Up\n")
 	utils.CheckErrLite(err)

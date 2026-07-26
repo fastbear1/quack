@@ -12,7 +12,7 @@ import (
 	proc "github.com/fastbear1/quack/internal/runner"
 )
 
-const version string = "0.23.3"
+const version string = "0.24.1"
 
 const (
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 
@@ -36,6 +36,8 @@ flags:
   - path - directory where a new migration files will be stored
   - exclude - exclude gorm struct models(usually it's a embeded struct or not a model struct)
   - db-exclude - exclude database tables(for example goose_migrations table)
+  - silent - silent mode, print resulted SQL commands
+  - verbose - verbose output  
   flag usage examples:
     - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run
     - quack --models=internal/models --path=models --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run`
@@ -53,7 +55,7 @@ func main() {
 			fmt.Println("Quacking migration file")
 			var fileName string
 			if len(commands) > 1 {
-				fileName = strings.ToLower(commands[1])
+				fileName = strings.ToLower(commands[len(commands)-1])
 			} else {
 				fmt.Println("Filename not provided. Using default name 'goose_file'")
 				fileName = "goose_file"
@@ -91,6 +93,9 @@ func ParseFlags() *utils.ConfigYaml {
 
 	flag.Var(&conf.Models.Exclude, "exclude", "Exclude gorm models")
 	flag.Var(&conf.Database.Exclude, "db-exclude", "Exclude db tables")
+
+	flag.BoolVar(&conf.Silent, "silent", false, "Silent mode")
+	flag.BoolVar(&conf.Verbose, "verbose", false, "Verbose output")
 
 	flag.Parse()
 

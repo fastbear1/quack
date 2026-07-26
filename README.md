@@ -1,5 +1,5 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
-[![Status](https://img.shields.io/badge/beta-0.23.3-blue)](https://github.com/fastbear1/quack/releases)
+[![Status](https://img.shields.io/badge/beta-0.24.1-blue)](https://github.com/fastbear1/quack/releases)
 [![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
 
 # quack
@@ -80,6 +80,8 @@ flags:
   - path - directory where a new migration files will be stored
   - exclude - exclude gorm struct models(usually it's a embeded struct or not a model struct)
   - db-exclude - exclude database tables(for example goose_migrations table)
+  - silent - silent mode, print resulted SQL commands
+  - verbose - verbose output
   flag usage examples:
     - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run MIGRATIONFILE_NAME
     - quack --modesl=internal/models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run MIGRATIONFILE_NAME 
@@ -92,7 +94,7 @@ Example:
     quack --modesl=internal/models --path=migrations --uri=postgres://user:pass@host:port/database --dbname=database run MIGRATIONFILE_NAME·
 ```
 
-Command flags has priority on config file parameters. For different example of usage see [Playground](./playground/Menu.md) cases. 
+Flags that you specify from the command line override config file parameters. For different example of usage see [Playground](./playground/Menu.md) cases. 
 After file was created and checked use goose migration tool for applying newest migrations to database.
 
 ----------------

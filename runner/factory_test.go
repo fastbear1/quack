@@ -1,24 +1,35 @@
 package runner
 
 import (
+	"context"
 	"testing"
-	sch "github.com/fastbear1/quack/schema"
+
 	pg "github.com/fastbear1/quack/drivers/pg_driver"
+	utils "github.com/fastbear1/quack/internal"
+	. "github.com/fastbear1/quack/schema"
 )
 
 func TestFactoryMethod(t *testing.T) {
-	var drv sch.DbHandler
-	drv, err := GetDriver("postgres")
+	var drv DbInterface
+	var ctx context.Context = context.Background()
+	var conf utils.ConfigYaml
+	conf.ReadConfig()
+	conf.Database.Type = "postgres"
+	drv, err := GetDriver(ctx, &conf)
 	if err != nil {
 		t.Error()
 	}
-	if _, ok := drv.(*pg.PgHandler); ok != true {
+	if _, ok := drv.(*pg.PgDriver); ok != true {
 		t.Error()
 	}
 }
 
 func TestFactoryMethodUnknowHandler(t *testing.T) {
-	_, err := GetDriver("not-postgres")
+	var ctx context.Context = context.Background()
+	var conf utils.ConfigYaml
+	conf.ReadConfig()
+	conf.Database.Type = "not-postgres"
+	_, err := GetDriver(ctx, &conf)
 	if err == nil {
 		t.Error()
 	}

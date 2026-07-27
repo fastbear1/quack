@@ -1,11 +1,5 @@
 package schema
 
-import (
-	"context"
-
-	utils "github.com/fastbear1/quack/internal"
-)
-
 type Meta interface {
 	GetName() string
 }
@@ -81,11 +75,11 @@ func (t TableMeta) GetName() string {
 }
 
 // Database driver interface
-type DbHandler interface {
-	GetTablesList(ctx context.Context, conf *utils.ConfigYaml) ([]string, error)
-	GetTableColumnsMeta(ctx context.Context, conf *utils.ConfigYaml, name string) ([]Column, error)
-	GetTableIndices(ctx context.Context, conf *utils.ConfigYaml, name string) ([]IndexMeta, error)
-	GetTableReferences(ctx context.Context, conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error)
+type DbInterface interface {
+	GetTablesList() ([]string, error)
+	GetTableColumnsMeta(name string) ([]Column, error)
+	GetTableIndices(name string) ([]IndexMeta, error)
+	GetTableReferences(name string) ([]ReferenceMeta, error)
 
 	TransformName(name string) string
 	TransformNull(nullable bool, def_val string) bool
@@ -104,38 +98,38 @@ type DbHandler interface {
 }
 
 // SQL commands
-func (table *TableMeta) CreateTable(drv DbHandler) string {
+func (table *TableMeta) CreateTable(drv DbInterface) string {
 	return drv.CreateTableStatement(table)
 }
 
-func (table *TableMeta) DeleteTable(drv DbHandler) string {
+func (table *TableMeta) DeleteTable(drv DbInterface) string {
 	return drv.DropTableStatement(table)
 }
 
-func (col *Column) CreateColumn(drv DbHandler) string {
+func (col *Column) CreateColumn(drv DbInterface) string {
 	return drv.CreateColumnStatement(col)
 }
 
-func (col *Column) AlterColumn(drv DbHandler) string {
+func (col *Column) AlterColumn(drv DbInterface) string {
 	return drv.AlterColumnStatement(col)
 }
 
-func (col *Column) DeleteColumn(drv DbHandler) string {
+func (col *Column) DeleteColumn(drv DbInterface) string {
 	return drv.DropColumnStatement(col)
 }
 
-func (idx *IndexMeta) CreateIndex(drv DbHandler) string {
+func (idx *IndexMeta) CreateIndex(drv DbInterface) string {
 	return drv.CreateIndexStatement(idx)
 }
 
-func (idx *IndexMeta) DropIndex(drv DbHandler) string {
+func (idx *IndexMeta) DropIndex(drv DbInterface) string {
 	return drv.DropIndexStatement(idx)
 }
 
-func (ref *ReferenceMeta) CreateConstraint(drv DbHandler) string {
+func (ref *ReferenceMeta) CreateConstraint(drv DbInterface) string {
 	return drv.CreateConstraintStatement(ref)
 }
 
-func (ref *ReferenceMeta) DeleteConstraint(drv DbHandler) string {
+func (ref *ReferenceMeta) DeleteConstraint(drv DbInterface) string {
 	return drv.DropConstraintStatement(ref)
 }

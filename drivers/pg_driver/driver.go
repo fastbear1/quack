@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"text/template"
 
 	utils "github.com/fastbear1/quack/internal"
@@ -29,18 +30,47 @@ var funcMap = template.FuncMap{
 	},
 }
 
-// Database driver for postgres
-type PgHandler struct{}
+var (
+	conn    *pgx.Conn
+	connErr error
+	once    sync.Once
+)
 
-func (pg *PgHandler) GetTablesList(ctx context.Context, conf *utils.ConfigYaml) ([]string, error) {
-	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+// Database driver for postgres
+type PgDriver struct {
+	ctx  context.Context
+	conf *utils.ConfigYaml
+}
+
+func GetPgDriver(ctx context.Context, conf *utils.ConfigYaml) *PgDriver {
+	return &PgDriver{
+		ctx:  ctx,
+		conf: conf,
+	}
+}
+
+var _ DbInterface = (*PgDriver)(nil)
+
+func getConnection(ctx context.Context, uri string) (*pgx.Conn, error) {
+	dbCtx := ctx
+	dbURI := uri
+	once.Do(func() {
+		conn, connErr = pgx.Connect(dbCtx, dbURI)
+	})
+	return conn, connErr
+}
+
+func (pg *PgDriver) GetTablesList() ([]string, error) {
+	//conn, err := pgx.Connect(pg.ctx, string(pg.conf.Database.Uri))
+	conn, err := getConnection(pg.ctx, pg.conf.Database.Uri.String())
+
 	if err != nil {
 		return []string{}, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close(pg.ctx)
 
 	// get tables list
-	dbtables, err := getDbTables(conf, ctx, conn)
+	dbtables, err := getDbTables(pg.conf, pg.ctx, conn)
 	if err != nil {
 		return []string{}, err
 	}
@@ -76,16 +106,16 @@ func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([
 	return tables, err
 }
 
-func (pg *PgHandler) GetTableColumnsMeta(ctx context.Context, conf *utils.ConfigYaml, name string) ([]Column, error) {
+func (pg *PgDriver) GetTableColumnsMeta(name string) ([]Column, error) {
 	var res = []Column{}
-	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+	conn, err := pgx.Connect(pg.ctx, string(pg.conf.Database.Uri))
 	if err != nil {
 		return []Column{}, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close(pg.ctx)
 
 	rows, err := conn.Query(
-		ctx,
+		pg.ctx,
 		GetTableColumnsQuery,
 		pgx.NamedArgs{
 			"table": name,
@@ -101,7 +131,7 @@ func (pg *PgHandler) GetTableColumnsMeta(ctx context.Context, conf *utils.Config
 		return []Column{}, err
 	}
 
-	pk_const_name, pk_column_name := pg.GetPrimaryKeyColumn(conn, ctx, name)
+	pk_const_name, pk_column_name := pg.GetPrimaryKeyColumn(conn, pg.ctx, name)
 
 	for i := 0; i < len(notes); i++ {
 		res = append(res, Column{
@@ -127,7 +157,7 @@ func (pg *PgHandler) GetTableColumnsMeta(ctx context.Context, conf *utils.Config
 	return res, nil
 }
 
-func (pg *PgHandler) GetPrimaryKeyColumn(conn *pgx.Conn, ctx context.Context, table_name string) (string, string) {
+func (pg *PgDriver) GetPrimaryKeyColumn(conn *pgx.Conn, ctx context.Context, table_name string) (string, string) {
 	// Find primary key field
 	rowid, err := conn.Query(
 		ctx,
@@ -148,17 +178,17 @@ func (pg *PgHandler) GetPrimaryKeyColumn(conn *pgx.Conn, ctx context.Context, ta
 	return pk_const_name, pk_column_name
 }
 
-func (pg *PgHandler) GetTableIndices(ctx context.Context, conf *utils.ConfigYaml, name string) ([]IndexMeta, error) {
-	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+func (pg *PgDriver) GetTableIndices(name string) ([]IndexMeta, error) {
+	conn, err := pgx.Connect(pg.ctx, string(pg.conf.Database.Uri))
 	var idxt []IndexMeta
 
 	if err != nil {
 		return []IndexMeta{}, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close(pg.ctx)
 
 	row, err := conn.Query(
-		ctx,
+		pg.ctx,
 		GetTableIndicesInformation,
 		pgx.NamedArgs{
 			"table": name,
@@ -179,17 +209,17 @@ func (pg *PgHandler) GetTableIndices(ctx context.Context, conf *utils.ConfigYaml
 	return idxt, nil
 }
 
-func (pg *PgHandler) GetTableReferences(ctx context.Context, conf *utils.ConfigYaml, name string) ([]ReferenceMeta, error) {
-	conn, err := pgx.Connect(ctx, string(conf.Database.Uri))
+func (pg *PgDriver) GetTableReferences(name string) ([]ReferenceMeta, error) {
+	conn, err := pgx.Connect(pg.ctx, string(pg.conf.Database.Uri))
 	var ref []ReferenceMeta
 
 	if err != nil {
 		return []ReferenceMeta{}, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close(pg.ctx)
 
 	row, err := conn.Query(
-		ctx,
+		pg.ctx,
 		GetTableForeignKeys,
 		pgx.NamedArgs{
 			"table": name,
@@ -210,7 +240,7 @@ func (pg *PgHandler) GetTableReferences(ctx context.Context, conf *utils.ConfigY
 	return ref, nil
 }
 
-func (pg *PgHandler) TransformName(name string) string {
+func (pg *PgDriver) TransformName(name string) string {
 	// Camel case to snake case
 	var buffer bytes.Buffer
 	delta := 'a' - 'A'
@@ -230,7 +260,7 @@ func (pg *PgHandler) TransformName(name string) string {
 	return buffer.String()
 }
 
-func (pg *PgHandler) TransformNull(nullable bool, def_val string) bool {
+func (pg *PgDriver) TransformNull(nullable bool, def_val string) bool {
 	var use_null bool = false
 	if def_val == "" && !nullable {
 		use_null = true
@@ -238,7 +268,7 @@ func (pg *PgHandler) TransformNull(nullable bool, def_val string) bool {
 	return use_null
 }
 
-func (pg *PgHandler) TransformType(g_type string) string {
+func (pg *PgDriver) TransformType(g_type string) string {
 	tp, ok := TypeConversion[g_type]
 	if !ok {
 		return g_type
@@ -246,7 +276,7 @@ func (pg *PgHandler) TransformType(g_type string) string {
 	return tp
 }
 
-func (pg *PgHandler) TransformDefault(columnType string, columnDefault string) string {
+func (pg *PgDriver) TransformDefault(columnType string, columnDefault string) string {
 	defValue := columnDefault
 	columnType = strings.Split(columnType, "(")[0]
 	switch columnType {
@@ -256,7 +286,7 @@ func (pg *PgHandler) TransformDefault(columnType string, columnDefault string) s
 	return defValue
 }
 
-func (pg *PgHandler) CreateTableStatement(t *TableMeta) string {
+func (pg *PgDriver) CreateTableStatement(t *TableMeta) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTableTmpl)
 	utils.CheckErrLite(err)
@@ -282,7 +312,7 @@ func (pg *PgHandler) CreateTableStatement(t *TableMeta) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) DropTableStatement(t *TableMeta) string {
+func (pg *PgDriver) DropTableStatement(t *TableMeta) string {
 	var sqlCommand bytes.Buffer
 
 	deleteTmpl, err := template.New("delete").Parse(DropTableTmpl)
@@ -294,7 +324,7 @@ func (pg *PgHandler) DropTableStatement(t *TableMeta) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) CreateColumnStatement(col *Column) string {
+func (pg *PgDriver) CreateColumnStatement(col *Column) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateColumnTmpl)
 	utils.CheckErrLite(err)
@@ -305,7 +335,7 @@ func (pg *PgHandler) CreateColumnStatement(col *Column) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) AlterColumnStatement(col *Column) string {
+func (pg *PgDriver) AlterColumnStatement(col *Column) string {
 	return getAlterColumnCommand(col, false)
 
 	// declate temporary strict for downgrade alter command
@@ -323,7 +353,7 @@ func (pg *PgHandler) AlterColumnStatement(col *Column) string {
 	*/
 }
 
-func (pg *PgHandler) DropColumnStatement(col *Column) string {
+func (pg *PgDriver) DropColumnStatement(col *Column) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropColumnTmpl)
 	utils.CheckErrLite(err)
@@ -383,7 +413,7 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 	return sql
 }
 
-func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) string {
+func (pg *PgDriver) CreateIndexStatement(idx *IndexMeta) string {
 	//TODO: to refactor
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndexTmpl)
@@ -411,7 +441,7 @@ func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) string {
+func (pg *PgDriver) DropIndexStatement(idx *IndexMeta) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndexTmpl)
 	utils.CheckErrLite(err)
@@ -421,7 +451,7 @@ func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) string {
+func (pg *PgDriver) CreateConstraintStatement(ref *ReferenceMeta) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateConstraintTmpl)
 	utils.CheckErrLite(err)
@@ -431,7 +461,7 @@ func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) string {
 	return sqlCommand.String()
 }
 
-func (pg *PgHandler) DropConstraintStatement(ref *ReferenceMeta) string {
+func (pg *PgDriver) DropConstraintStatement(ref *ReferenceMeta) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraintTmpl)
 	utils.CheckErrLite(err)

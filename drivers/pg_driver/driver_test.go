@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	utils "github.com/fastbear1/quack/internal"
+	. "github.com/fastbear1/quack/schema"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
-	. "github.com/fastbear1/quack/schema"
 )
 
 func TestTransformName(t *testing.T) {
-	pg := &PgHandler{}
+	pg := &PgDriver{}
 
 	var test = []struct {
 		name   string
@@ -43,7 +43,7 @@ func TestTransformNull(t *testing.T) {
 
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
-			res := (&PgHandler{}).TransformNull(tt.null, tt.defval)
+			res := (&PgDriver{}).TransformNull(tt.null, tt.defval)
 			assert.Equal(t, res, tt.expect)
 		})
 	}
@@ -61,7 +61,7 @@ func TestTransformType(t *testing.T) {
 
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
-			res := (&PgHandler{}).TransformType(tt.codeType)
+			res := (&PgDriver{}).TransformType(tt.codeType)
 			assert.Equal(t, res, tt.expect)
 		})
 	}
@@ -167,8 +167,8 @@ func TestCreaetTabelStatement(t *testing.T) {
 
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
-			sqlUp := (&PgHandler{}).CreateTableStatement(&tt.tablemeta)
-			sqlDown := (&PgHandler{}).DropTableStatement(&tt.tablemeta)
+			sqlUp := (&PgDriver{}).CreateTableStatement(&tt.tablemeta)
+			sqlDown := (&PgDriver{}).DropTableStatement(&tt.tablemeta)
 			assert.Equal(t, sqlUp, tt.expect[0])
 			assert.Equal(t, sqlDown, tt.expect[1])
 		})

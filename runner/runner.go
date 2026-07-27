@@ -13,16 +13,16 @@ import (
 // quacking migration file pipeline
 func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	// step 1: check connection to database
-	var dbTablesMeta []TableMeta 
+	var dbTablesMeta []TableMeta
 
-	drv, err := GetDriver(conf.Database.Type)
+	drv, err := GetDriver(ctx, conf)
 	if err != nil {
 		fmt.Printf("Error occured in proccess of getting database driver: %s", err)
 		return 1
 	}
 
 	// step 1.1: get avaiable tables from database
-	dbTables, err := drv.GetTablesList(ctx, conf)
+	dbTables, err := drv.GetTablesList()
 	if err != nil {
 		fmt.Printf("Error occured while getting tables list: %s", err)
 		return 1
@@ -37,21 +37,21 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 
 	// step 1.2: get table columns, indices and constraint information
 	for i := 0; i < len(dbTablesMeta); i++ {
-		res, err := drv.GetTableColumnsMeta(ctx, conf, dbTablesMeta[i].Name)
+		res, err := drv.GetTableColumnsMeta(dbTablesMeta[i].Name)
 		if err != nil {
 			fmt.Printf("Error occured while getting tables column list: %s", err)
 			return 1
 		}
 		dbTablesMeta[i].Columns = res
 		// step 1.3: get table indices information
-		idx, err := drv.GetTableIndices(ctx, conf, dbTablesMeta[i].Name)
+		idx, err := drv.GetTableIndices(dbTablesMeta[i].Name)
 		if err != nil {
 			fmt.Printf("Error occured while getting indices list: %s", err)
 			return 1
 		}
 		dbTablesMeta[i].Indeces = idx
 		// step 1.4: get table references
-		ref, err := drv.GetTableReferences(ctx, conf, dbTablesMeta[i].Name)
+		ref, err := drv.GetTableReferences(dbTablesMeta[i].Name)
 		if err != nil {
 			fmt.Printf("Error occured while getting constraint list: %s", err)
 			return 1
@@ -106,7 +106,7 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	return 0
 }
 
-func parseModelStruct(data ModelStruct, drv DbHandler) TableMeta {
+func parseModelStruct(data ModelStruct, drv DbInterface) TableMeta {
 	model := TableMeta{
 		Name:       drv.TransformName(data.Name),
 		Columns:    make([]Column, 0),
@@ -281,7 +281,7 @@ func createIndexName(table string, columns []string, exp string) string {
 	return indexName
 }
 
-func parseReferenceEmbedStructs(drv DbHandler, table string, reftable string, tag string) ReferenceMeta {
+func parseReferenceEmbedStructs(drv DbInterface, table string, reftable string, tag string) ReferenceMeta {
 	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
 	var ref = ReferenceMeta{
 		TableName: drv.TransformName(table),
@@ -337,10 +337,10 @@ func transformAction(action string) string {
 	return defaultAction
 }
 
-func compareMetaState(dbmeta []TableMeta, gmeta []TableMeta) ([]func(drv DbHandler) string, []func(drv DbHandler) string) {
+func compareMetaState(dbmeta []TableMeta, gmeta []TableMeta) ([]func(drv DbInterface) string, []func(drv DbInterface) string) {
 	var (
-		upFuncList   []func(drv DbHandler) string
-		downFuncList []func(drv DbHandler) string
+		upFuncList   []func(drv DbInterface) string
+		downFuncList []func(drv DbInterface) string
 		dbmap        = map[string]TableMeta{}
 		gmap         = map[string]TableMeta{}
 	)

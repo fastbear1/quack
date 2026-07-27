@@ -1,4 +1,4 @@
-package drivers
+package pgdriver
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	utils "github.com/fastbear1/quack/internal"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
+	. "github.com/fastbear1/quack/schema"
 )
 
 func TestTransformName(t *testing.T) {

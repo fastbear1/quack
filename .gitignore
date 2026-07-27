@@ -24,8 +24,14 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# env and config files
 .env
+*.yaml
+
+# Teting data
+migrations/
+models/
+misc/
 
 # Editor/IDE
 # .idea/

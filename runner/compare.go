@@ -1,7 +1,7 @@
 package runner
 
 import (
-	d "github.com/fastbear1/quack/internal/drivers"
+	. "github.com/fastbear1/quack/schema"
 )
 
 /*
@@ -49,7 +49,7 @@ func getCatalogData(left []string, right []string) (strUp []string, strDown []st
 }
 
 // TODO: expensive code
-func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
+func StateDifference[T Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	var retLeft, retRight []T
 	var leftMap, rightMap = map[string]T{}, map[string]T{}
 
@@ -82,8 +82,8 @@ func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	// compare column parameters
 	for k, lv := range leftMap {
 		if rv, ok := rightMap[k]; ok {
-			lcol := any(lv).(d.Column)
-			rcol := any(rv).(d.Column)
+			lcol := any(lv).(Column)
+			rcol := any(rv).(Column)
 			if state := columnSchemaChanged(&lcol, &rcol); state {
 				alterColumns = append(alterColumns, any(lcol).(T))
 			}
@@ -93,7 +93,7 @@ func StateDifference[T d.Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	return retLeft, retRight, alterColumns
 }
 
-func columnSchemaChanged(left *d.Column, right *d.Column) bool {
+func columnSchemaChanged(left *Column, right *Column) bool {
 	var changed bool = false
 	if left.DataType != right.DataType {
 		left.AlterState.Type = 0
@@ -113,9 +113,9 @@ func columnSchemaChanged(left *d.Column, right *d.Column) bool {
 	return changed
 }
 
-func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.ReferenceMeta) ([]d.ReferenceMeta, []d.ReferenceMeta, [][]d.ReferenceMeta) {
-	var retLeft, retRight []d.ReferenceMeta
-	var leftMap, rightMap = map[string]d.ReferenceMeta{}, map[string]d.ReferenceMeta{}
+func referenceStateChanged(leftArray []ReferenceMeta, rightArray []ReferenceMeta) ([]ReferenceMeta, []ReferenceMeta, [][]ReferenceMeta) {
+	var retLeft, retRight []ReferenceMeta
+	var leftMap, rightMap = map[string]ReferenceMeta{}, map[string]ReferenceMeta{}
 	var leftNames, rightNames []string
 
 	for _, i := range leftArray {
@@ -136,12 +136,12 @@ func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.Reference
 		retLeft = append(retLeft, leftMap[rname])
 	}
 
-	var alterColumns [][]d.ReferenceMeta
+	var alterColumns [][]ReferenceMeta
 	// compare column parameters
 	for k, lv := range leftMap {
 		if rv, ok := rightMap[k]; ok {
 			if state := isReferenceSchemaChanged(&lv, &rv); state {
-				alterColumns = append(alterColumns, []d.ReferenceMeta{lv, rv})
+				alterColumns = append(alterColumns, []ReferenceMeta{lv, rv})
 			}
 		}
 	}
@@ -150,16 +150,16 @@ func referenceStateChanged(leftArray []d.ReferenceMeta, rightArray []d.Reference
 
 }
 
-func isReferenceSchemaChanged(l *d.ReferenceMeta, r *d.ReferenceMeta) bool {
+func isReferenceSchemaChanged(l *ReferenceMeta, r *ReferenceMeta) bool {
 	if l.RefColumn != r.RefColumn || l.RefTable != r.RefTable || l.RefOptions != r.RefOptions {
 		return true
 	}
 	return false
 }
 
-func indicesStateChanged(leftArray []d.IndexMeta, rightArray []d.IndexMeta) ([]d.IndexMeta, []d.IndexMeta, [][]d.IndexMeta) {
-	var retLeft, retRight []d.IndexMeta
-	var leftMap, rightMap = map[string]d.IndexMeta{}, map[string]d.IndexMeta{}
+func indicesStateChanged(leftArray []IndexMeta, rightArray []IndexMeta) ([]IndexMeta, []IndexMeta, [][]IndexMeta) {
+	var retLeft, retRight []IndexMeta
+	var leftMap, rightMap = map[string]IndexMeta{}, map[string]IndexMeta{}
 	var leftNames, rightNames []string
 
 	for _, i := range leftArray {
@@ -180,12 +180,12 @@ func indicesStateChanged(leftArray []d.IndexMeta, rightArray []d.IndexMeta) ([]d
 		retLeft = append(retLeft, leftMap[rname])
 	}
 
-	var alterColumns [][]d.IndexMeta
+	var alterColumns [][]IndexMeta
 	// compare column parameters
 	for k, lv := range leftMap {
 		if rv, ok := rightMap[k]; ok {
 			if state := isIndexSchemaChanged(&lv, &rv); state {
-				alterColumns = append(alterColumns, []d.IndexMeta{lv, rv})
+				alterColumns = append(alterColumns, []IndexMeta{lv, rv})
 			}
 		}
 	}
@@ -194,7 +194,7 @@ func indicesStateChanged(leftArray []d.IndexMeta, rightArray []d.IndexMeta) ([]d
 
 }
 
-func isIndexSchemaChanged(l *d.IndexMeta, r *d.IndexMeta) bool {
+func isIndexSchemaChanged(l *IndexMeta, r *IndexMeta) bool {
 	if l.Unique != r.Unique || l.Type != r.Type || len(l.Columns) != len(r.Columns) {
 		return true
 	}

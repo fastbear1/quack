@@ -7,15 +7,15 @@ import (
 	"strings"
 
 	utils "github.com/fastbear1/quack/internal"
-	d "github.com/fastbear1/quack/internal/drivers"
+	. "github.com/fastbear1/quack/schema"
 )
 
 // quacking migration file pipeline
 func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	// step 1: check connection to database
-	var dbTablesMeta []d.TableMeta
+	var dbTablesMeta []TableMeta 
 
-	drv, err := d.GetDriver(conf.Database.Type)
+	drv, err := GetDriver(conf.Database.Type)
 	if err != nil {
 		fmt.Printf("Error occured in proccess of getting database driver: %s", err)
 		return 1
@@ -27,11 +27,9 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 		fmt.Printf("Error occured while getting tables list: %s", err)
 		return 1
 	}
-	// debug printing
-	// fmt.Println(dbTables)
 	for _, tableName := range dbTables {
 		dbTablesMeta = append(dbTablesMeta,
-			d.TableMeta{
+			TableMeta{
 				Name: tableName,
 			},
 		)
@@ -62,7 +60,7 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	}
 
 	// step 2: Scan models directory for gorm struct definitions
-	var gormStructMeta []d.TableMeta
+	var gormStructMeta []TableMeta
 
 	StructRaw, err := Scan(conf)
 	if err != nil {
@@ -108,16 +106,16 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	return 0
 }
 
-func parseModelStruct(data ModelStruct, drv d.DbHandler) d.TableMeta {
-	model := d.TableMeta{
+func parseModelStruct(data ModelStruct, drv DbHandler) TableMeta {
+	model := TableMeta{
 		Name:       drv.TransformName(data.Name),
-		Columns:    make([]d.Column, 0),
-		Indeces:    make([]d.IndexMeta, 0),
-		References: make([]d.ReferenceMeta, 0),
+		Columns:    make([]Column, 0),
+		Indeces:    make([]IndexMeta, 0),
+		References: make([]ReferenceMeta, 0),
 	}
 
 	for _, f := range data.Fields {
-		column := d.Column{
+		column := Column{
 			TableName:         model.Name,
 			ColumnName:        drv.TransformName(f.FieldName),
 			DataType:          drv.TransformType(f.FieldType),
@@ -145,7 +143,7 @@ func parseModelStruct(data ModelStruct, drv d.DbHandler) d.TableMeta {
 	return model
 }
 
-func parseTag(col *d.Column, tag string) {
+func parseTag(col *Column, tag string) {
 	for _, t := range strings.Split(tag, ";") {
 		if strings.Contains(t, ":") {
 			splitval := strings.Split(t, ":")
@@ -171,10 +169,10 @@ func parseTag(col *d.Column, tag string) {
 	}
 }
 
-func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool) {
+func parseIndicesTag(table string, column string, tag string) (IndexMeta, bool) {
 	var (
-		idxmeta  d.IndexMeta = d.IndexMeta{}
-		idxfound bool        = false
+		idxmeta  IndexMeta = IndexMeta{}
+		idxfound bool      = false
 	)
 	tag = strings.TrimPrefix(tag, "gorm:")
 	if tag == "" || strings.Contains(tag, "primary_key") {
@@ -216,7 +214,7 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 					//TODO: set drier default index type
 					settings["TYPE"] = "btree"
 				}
-				idxmeta = d.IndexMeta{
+				idxmeta = IndexMeta{
 					TableName: table,
 					Name:      name,
 					Unique:    uniqidx,
@@ -224,7 +222,7 @@ func parseIndicesTag(table string, column string, tag string) (d.IndexMeta, bool
 					Where:     settings["WHERE"],
 					Option:    settings["OPTION"],
 					Parsed:    true,
-					Columns: []d.IndexOption{{
+					Columns: []IndexOption{{
 						Field:      column,
 						Expression: settings["EXPRESSION"],
 						Sort:       settings["SORT"],
@@ -283,9 +281,9 @@ func createIndexName(table string, columns []string, exp string) string {
 	return indexName
 }
 
-func parseReferenceEmbedStructs(drv d.DbHandler, table string, reftable string, tag string) d.ReferenceMeta {
+func parseReferenceEmbedStructs(drv DbHandler, table string, reftable string, tag string) ReferenceMeta {
 	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
-	var ref = d.ReferenceMeta{
+	var ref = ReferenceMeta{
 		TableName: drv.TransformName(table),
 	}
 	tag = strings.TrimPrefix(tag, "gorm:")
@@ -339,12 +337,12 @@ func transformAction(action string) string {
 	return defaultAction
 }
 
-func compareMetaState(dbmeta []d.TableMeta, gmeta []d.TableMeta) ([]func(drv d.DbHandler) string, []func(drv d.DbHandler) string) {
+func compareMetaState(dbmeta []TableMeta, gmeta []TableMeta) ([]func(drv DbHandler) string, []func(drv DbHandler) string) {
 	var (
-		upFuncList   []func(drv d.DbHandler) string
-		downFuncList []func(drv d.DbHandler) string
-		dbmap        = map[string]d.TableMeta{}
-		gmap         = map[string]d.TableMeta{}
+		upFuncList   []func(drv DbHandler) string
+		downFuncList []func(drv DbHandler) string
+		dbmap        = map[string]TableMeta{}
+		gmap         = map[string]TableMeta{}
 	)
 
 	if len(dbmeta) == 0 {

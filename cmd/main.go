@@ -9,10 +9,10 @@ import (
 	"syscall"
 
 	utils "github.com/fastbear1/quack/internal"
-	proc "github.com/fastbear1/quack/internal/runner"
+	proc "github.com/fastbear1/quack/runner"
 )
 
-const version string = "0.24.1"
+const version string = "0.25.1"
 
 const (
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 
@@ -39,8 +39,9 @@ flags:
   - silent - silent mode, print resulted SQL commands
   - verbose - verbose output  
   flag usage examples:
-    - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run
-    - quack --models=internal/models --path=models --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run`
+    - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run <FILE_NAME>
+    - quack --models=internal/models --path=models --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run <FILE_NAME>
+	- quack run --silent --verbose <FILE_NAME>`
 )
 
 func main() {

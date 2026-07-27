@@ -1,5 +1,5 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
-[![Status](https://img.shields.io/badge/beta-0.24.1-blue)](https://github.com/fastbear1/quack/releases)
+[![Status](https://img.shields.io/badge/beta-0.25.1-blue)](https://github.com/fastbear1/quack/releases)
 [![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
 
 # quack
@@ -83,9 +83,9 @@ flags:
   - silent - silent mode, print resulted SQL commands
   - verbose - verbose output
   flag usage examples:
-    - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run MIGRATIONFILE_NAME
-    - quack --modesl=internal/models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run MIGRATIONFILE_NAME 
-)
+    - quack --models=models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base,TestUsers run <FILE_NAME>
+    - quack --modesl=internal/models --path=migrations --uri=postgres://user:pass@host:port/database --exclude=Base --db-exclude=goose,goose_migrations run <FILE_NAME>
+	- quack run --silent --verbose <FILE_NAME>`
 ```
 If it's impossible to use config file then it's allowed to use only cli params. Is taht case flags uri,models,dbname,path are mandatory. 
 

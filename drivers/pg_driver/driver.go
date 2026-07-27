@@ -1,4 +1,4 @@
-package drivers
+package pgdriver
 
 import (
 	"bytes"
@@ -8,27 +8,10 @@ import (
 	"text/template"
 
 	utils "github.com/fastbear1/quack/internal"
+	. "github.com/fastbear1/quack/schema"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-// Internla Pg type definitions
-type PgColumn struct {
-	Column_name              string
-	Data_type                string
-	Character_maximum_length pgtype.Uint32
-	Is_nullable              string
-	Column_default           pgtype.Text
-}
-
-type AlterData struct {
-	TableName     string
-	ColumnName    string
-	Type          uint8
-	DataType      string
-	IsNullable    bool
-	ColumnDefault string
-}
 
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
@@ -39,74 +22,7 @@ var TypeConversion = map[string]string{
 	"float64": "double precision",
 }
 
-const (
-	GetTableColumnsQuery = `
-SELECT 
-	column_name, 
-	data_type, 
-	character_maximum_length, 
-	is_nullable, column_default 
-FROM information_schema.columns 
-WHERE table_name = @table`
-	FindPrimaryKeyQuery = `
-SELECT 
-	kc.constraint_name, 
-	kc.column_name 
-FROM information_schema.key_column_usage kc 
-JOIN information_schema.table_constraints tc 
-	ON kc.constraint_name = tc.constraint_name 
-WHERE tc.constraint_type = 'PRIMARY KEY' 
-	AND kc.table_name=@table`
-	GetTableIndicesInformation = `
-SELECT 
-	indexname,
-	indexdef 
-FROM pg_catalog.pg_indexes 
-WHERE tablename=@table 
-	AND indexname NOT IN (
-		SELECT constraint_name 
-		FROM information_schema.table_constraints 
-		WHERE table_name=@table
-);`
-	GetTableNamesQuery = `
-SELECT 
-	table_name 
-FROM information_schema.tables 
-WHERE table_type='BASE TABLE' 
-	AND table_schema='public' 
-	AND table_catalog=@db`
-	GetTableForeignKeys = `
-SELECT 
-	conname, 
-	pg_get_constraintdef(oid) 
-FROM pg_constraint
-WHERE contype IN ('f', 'p ')
-	AND pg_get_constraintdef(oid) LIKE 'FOREIGN KEY %' 
-	AND conrelid::regclass::text = @table;
-`
-)
-
-// SQL templates and functions
-const (
-	CreateTemaplete = `{{$lenColumns := len .Columns}}{{$lenRef := len .References}}CREATE TABLE "public"."{{ .Name }}"(
-{{- range $i, $a := .Columns}}
-	{{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }},
-{{- end}}
-	{{ if .PrimaryColumn }}PRIMARY KEY ("{{.PrimaryColumn}}"){{ end }}{{ if .References }},{{end}}
-{{- range $i, $a := .References}}
-	CONSTRAINT "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{.RefColumn}}"){{if .RefOptions}} {{.RefOptions}}{{end}}{{ if not (isLast $i $lenRef) }},{{ end }}
-{{- end}}
-);`
-	DropTableTemplate = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
-	CreateColumn      = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} default {{ .ColumnDefault }}{{ end }}`
-	AlterColumn       = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN IF EXISTS {{ .ColumnName }}`
-	DropColumn        = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN IF EXISTS {{ .ColumnName }}`
-	CreateIndex       = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
-	DropIndex         = `DROP INDEX IF EXISTS "{{.Name}}"`
-	CreateConstraint  = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT IF NOT EXISTS "{{.Name}}" FOREIGN KEY ("{{.Column}}") REFERENCES "public"."{{.RefTable}}" ("{{.RefColumn}}"){{if .RefOptions}} {{.RefOptions}}{{end}}`
-	DropConstraint    = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}}"`
-)
-
+// Templates function for calculate last item
 var funcMap = template.FuncMap{
 	"isLast": func(index int, len int) bool {
 		return index+1 == len
@@ -342,7 +258,7 @@ func (pg *PgHandler) TransformDefault(columnType string, columnDefault string) s
 
 func (pg *PgHandler) CreateTableStatement(t *TableMeta) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTemaplete)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateTableTmpl)
 	utils.CheckErrLite(err)
 
 	// find primary column
@@ -369,7 +285,7 @@ func (pg *PgHandler) CreateTableStatement(t *TableMeta) string {
 func (pg *PgHandler) DropTableStatement(t *TableMeta) string {
 	var sqlCommand bytes.Buffer
 
-	deleteTmpl, err := template.New("delete").Parse(DropTableTemplate)
+	deleteTmpl, err := template.New("delete").Parse(DropTableTmpl)
 	utils.CheckErrLite(err)
 
 	if err := deleteTmpl.Execute(&sqlCommand, t); err != nil {
@@ -380,7 +296,7 @@ func (pg *PgHandler) DropTableStatement(t *TableMeta) string {
 
 func (pg *PgHandler) CreateColumnStatement(col *Column) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateColumn)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateColumnTmpl)
 	utils.CheckErrLite(err)
 
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
@@ -409,7 +325,7 @@ func (pg *PgHandler) AlterColumnStatement(col *Column) string {
 
 func (pg *PgHandler) DropColumnStatement(col *Column) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropColumn)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropColumnTmpl)
 	utils.CheckErrLite(err)
 
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
@@ -420,7 +336,7 @@ func (pg *PgHandler) DropColumnStatement(col *Column) string {
 
 func getAlterColumnCommand(col any, downgrade bool) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(AlterColumn)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(AlterColumnTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
 		fmt.Println(err)
@@ -470,7 +386,7 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) string {
 	//TODO: to refactor
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndex)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndexTmpl)
 	utils.CheckErrLite(err)
 
 	var t = struct {
@@ -497,7 +413,7 @@ func (pg *PgHandler) CreateIndexStatement(idx *IndexMeta) string {
 
 func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndex)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndexTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, idx); err != nil {
 		fmt.Println(err)
@@ -507,7 +423,7 @@ func (pg *PgHandler) DropIndexStatement(idx *IndexMeta) string {
 
 func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateConstraint)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateConstraintTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
 		fmt.Println(err)
@@ -517,7 +433,7 @@ func (pg *PgHandler) CreateConstraintStatement(ref *ReferenceMeta) string {
 
 func (pg *PgHandler) DropConstraintStatement(ref *ReferenceMeta) string {
 	var sqlCommand bytes.Buffer
-	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraint)
+	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraintTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
 		fmt.Println(err)

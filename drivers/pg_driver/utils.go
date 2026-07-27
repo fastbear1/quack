@@ -1,8 +1,10 @@
-package drivers
+package pgdriver
 
 import (
 	"regexp"
 	"strings"
+
+	. "github.com/fastbear1/quack/schema"
 )
 
 func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {

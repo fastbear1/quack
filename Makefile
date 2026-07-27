@@ -2,11 +2,11 @@ Go ?= go
 SHELL=/bin/bash
 TODAY=$(shell date +'%Y-%m-%d 00:00')
 
-.PHONY: tests version
+.PHONY: tests version help
 
 test:
 	@cp ./misc/quack_config_test.yaml ./quack_config.yaml
-	@go test -v ./cmd ./internal ./internal/drivers ./internal/runner
+	@go test -v ./cmd ./internal ./drivers/pg_driver ./runner
 	@cp ./misc/quack_config_original.yaml ./quack_config.yaml
 
 version:
@@ -15,3 +15,10 @@ version:
 	PATCH=$$(git log --date=short --pretty=format:%ad --after='$(TODAY)' |sort|uniq -c|awk {'print $$1 + 1'}); \
 	if [ "$$PATCH" == "" ]; then PATCH=1; fi; \
 	echo "$$MAJOR"."$$MINOR"."$$PATCH"
+
+
+help:
+	@echo "Command usage:"
+	@echo "     help - show current help information"
+	@echo "     test - run all tests"
+	@echo "     version - show application version for uncommited changes"

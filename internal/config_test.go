@@ -45,5 +45,6 @@ func TestStringList(t *testing.T) {
 	var strl StringList
 	err := strl.Set("key,val")
 	assert.Nil(t, err)
+	assert.Equal(t, strl, StringList{"key", "val"})
 	assert.Equal(t, strl.String(), "key,val")
 }

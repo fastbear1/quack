@@ -7,17 +7,21 @@ import (
 	. "github.com/fastbear1/quack/schema"
 )
 
-func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {
+func ParseDatabaseIndices(indexDef string) (IndexMeta, error) {
 	main_part := `CREATE(?<Unique> UNIQUE)? INDEX (?<Name>\w+) ON (?:.+) USING (?<Type>\w+)`
 	field_part := ` \((?<Exp>\w+\(\w+\))?(?<Fieldlist>[a-z_\s,]+)?(?<Collate>COLLATE [\w\d"-]+)?(?<Sort>[A-Z\s]+)?\)`
 	partial_part := `(?<Where> WHERE \([\w\d\s<>=:'"\-\(\)_]+\))?(?<Include> INCLUDE \(\w+\))?(?<With> WITH \([\w\d\s=]+\))?(?<Distinct> NULLS DISTINCT| NULLS NOT DISTINCT)?`
 
-	r := regexp.MustCompile(main_part + field_part + partial_part)
+	r, err := regexp.Compile(main_part + field_part + partial_part)
+
+	if err != nil {
+		return IndexMeta{}, err
+	}
 
 	type paramsMap map[string]string
 
 	idx := make(paramsMap, 0)
-	match := r.FindStringSubmatch(indexdef)
+	match := r.FindStringSubmatch(indexDef)
 	for i, name := range r.SubexpNames() {
 		if i > 0 && i <= len(match) {
 			idx[name] = match[i]
@@ -27,7 +31,7 @@ func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {
 	uniq := true
 	if idx["Unique"] == "" {
 		uniq = false
-	}
+	}	
 
 	var fields = []string{}
 	if idx["Fieldlist"] != "" {
@@ -36,7 +40,10 @@ func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {
 		}
 	}
 	if idx["Fieldlist"] == "" && idx["Exp"] != "" {
-		rexp := regexp.MustCompile(`\w+\((?<Field>\w+)\)`)
+		rexp, err := regexp.Compile(`\w+\((?<Field>\w+)\)`)
+		if err != nil {
+			return IndexMeta{}, err
+		}
 		match := rexp.FindStringSubmatch(idx["Exp"])
 		if len(match) > 1 {
 			fields = append(fields, match[1])
@@ -50,7 +57,7 @@ func ParseDatabaseIndices(indexdef string) (IndexMeta, error) {
 			Expression: idx["Exp"],
 			Sort:       idx["Sort"],
 			Collate:    idx["Collate"],
-			Priority:   i,
+			Priority:   i + 1,
 		}
 		idxopts = append(idxopts, field)
 	}

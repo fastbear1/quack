@@ -51,7 +51,6 @@ func TestValidateConfig(t *testing.T) {
 		t.Run(fmt.Sprintf("Test for validate config #%d", n), func(t *testing.T) {
 			conf.Database.Uri = utils.StringVal(tt.Uri)
 			res := isConfigValid(&conf)
-			fmt.Println(res)
 			assert.Equal(t, res, tt.excepted)
 			if res {
 				assert.Equal(t, conf.Database.Type, tt.Type)

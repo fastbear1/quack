@@ -12,7 +12,7 @@ import (
 	proc "github.com/fastbear1/quack/runner"
 )
 
-const version string = "0.25.1"
+const version string = "0.25.2"
 
 const (
 	helpInfo = `Quack - generate migration file for goose according gorm struct models 

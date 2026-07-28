@@ -16,7 +16,7 @@ func TestWriteToFile(t *testing.T) {
 
 	err := os.Mkdir(conf.Migrations.Path.String(), 0777)
 	assert.Nil(t, err)
-	//defer utils.CleanUpDir(conf.Migrations.Path.String())
+	defer utils.CleanUpDir(conf.Migrations.Path.String())
 
 	writeToFile(&conf, "test", []string{"one", "two", "three"}, []string{"one", "two", "three"})
 	files, err := os.ReadDir(conf.Migrations.Path.String())

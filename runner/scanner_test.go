@@ -19,7 +19,7 @@ func TestScanFunction(t *testing.T) {
 	testDir := path.Join(wd, conf.Models.Path.String())
 	err = os.Mkdir(testDir, 0777)
 	assert.Nil(t, err)
-	defer cleanUp(testDir)
+	defer utils.CleanUpDir(testDir)
 
 	src := `package test` + "\n" +
 		`import (` + "\n" +
@@ -57,7 +57,7 @@ func TestScanFunctionResults(t *testing.T) {
 	testDir := path.Join(wd, conf.Models.Path.String())
 	err = os.Mkdir(testDir, 0777)
 	assert.Nil(t, err)
-	defer cleanUp(testDir)
+	defer utils.CleanUpDir(testDir)
 
 	src1 := `package test` + "\n" +
 		`import (` + "\n" +
@@ -133,10 +133,4 @@ func TestScanFunctionResults(t *testing.T) {
 	assert.Equal(t, len(model.ReferenceFields), 1)
 	assert.Equal(t, model.ReferenceFields[0].FieldName, "Users")
 
-}
-
-func cleanUp(testDir string) {
-	if _, err := os.Stat(testDir); err == nil {
-		_ = os.RemoveAll(testDir)
-	}
 }

@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 )
 
 func InArray(s []string, el string) bool {
@@ -23,4 +24,10 @@ func CheckErrLite(err error) {
 func PrettyPrint(i any) string {
 	s, _ := json.MarshalIndent(i, "", "   ")
 	return string(s)
+}
+
+func CleanUpDir(dirName string) {
+	if _, err := os.Stat(dirName); err == nil {
+		_ = os.RemoveAll(dirName)
+	}
 }

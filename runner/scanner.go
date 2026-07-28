@@ -24,7 +24,7 @@ type ModelStruct struct {
 	ReferenceFields []FieldStruct
 }
 
-func FormatNode(fset *token.FileSet, node ast.Node) string {
+func formatNode(fset *token.FileSet, node ast.Node) string {
 	var fType string
 	switch t := node.(type) {
 	case *ast.Ident:
@@ -71,16 +71,16 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) ([]
 						fieldData.FieldName = field.Names[0].String()
 
 						if r, ok := field.Type.(*ast.Ident); ok && r.Obj != nil {
-							// FK column declaration
+							// FK column declarationi
 							var refField = FieldStruct{}
 							refField.FieldName = field.Names[0].String()
-							refField.FieldType = FormatNode(fset, field.Type)
+							refField.FieldType = formatNode(fset, field.Type)
 							if field.Tag != nil {
 								refField.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
 							}
 							modelData.ReferenceFields = append(modelData.ReferenceFields, refField)
 						} else {
-							fieldData.FieldType = FormatNode(fset, field.Type)
+							fieldData.FieldType = formatNode(fset, field.Type)
 							if field.Tag != nil {
 								fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
 							}
@@ -111,7 +111,6 @@ func visitFiles(conf *utils.ConfigYaml, fset *token.FileSet, files []*ast.File) 
 	var models []ModelStruct
 	var cached = make(map[string]ModelStruct)
 	for _, file := range files {
-		var structList []ModelStruct
 		structList, cacheList := getStructs(conf, fset, file)
 		models = append(models, structList...)
 		for _, model := range cacheList {
@@ -124,14 +123,19 @@ func visitFiles(conf *utils.ConfigYaml, fset *token.FileSet, files []*ast.File) 
 
 func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 	pFiles := make([]*ast.File, 0)
-	var pDir string = fmt.Sprintf("./%s", conf.Models.Path)
+
+	// get working direcotry
+	wd, err := os.Getwd()
+	utils.CheckErrLite(err)
+	pDir := path.Join(wd, conf.Models.Path.String())
+
 	// Create the AST file set.
 	fset := token.NewFileSet()
 
 	// read file names in directory
 	files, err := os.ReadDir(pDir)
 	if err != nil {
-		fmt.Println("Error parsing directory:", err)
+		fmt.Println("Error parsing directory: ", err)
 		return nil, err
 	}
 

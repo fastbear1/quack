@@ -125,7 +125,7 @@ func TestParseDatabaseIndices(t *testing.T) {
 					Name:      "idx_auth_users_password_partial_id",
 					Unique:    false,
 					Type:      "btree",
-					Where:     " WHERE (NOT ((created_at)::date > '2026-01-01'::date))",
+					Where:     "WHERE (NOT ((created_at)::date > '2026-01-01'::date))",
 					Option:    "",
 					Parsed:    true,
 					Columns: []IndexOption{
@@ -149,7 +149,7 @@ func TestParseDatabaseIndices(t *testing.T) {
 					Unique:    true,
 					Type:      "btree",
 					Where:     "",
-					Option:    " INCLUDE (user_id)",
+					Option:    "INCLUDE (user_id)",
 					Parsed:    true,
 					Columns: []IndexOption{
 						IndexOption{
@@ -176,7 +176,7 @@ func TestParseDatabaseIndices(t *testing.T) {
 					Parsed:    true,
 					Columns: []IndexOption{
 						IndexOption{
-							Field:      "password ",
+							Field:      "password",
 							Expression: "",
 							Sort:       "",
 							Collate:    `COLLATE "de-DE-x-icu"`,
@@ -206,6 +206,100 @@ func TestParseDatabaseIndices(t *testing.T) {
 				assert.Equal(t, f.Collate, tt.excepted.idx.Columns[i].Collate)
 				assert.Equal(t, f.Priority, tt.excepted.idx.Columns[i].Priority)
 			}
+		})
+	}
+}
+
+func TestParsedDatabaseReference(t *testing.T) {
+	type ExcData struct {
+		err error
+		ref ReferenceMeta
+	}
+
+	var testData = []struct {
+		tableName string
+		refName   string
+		refDef    string
+		excepted  ExcData
+	}{
+		{"commands",
+			"commands_cars_car_id_id",
+			"FOREIGN KEY (car_id) REFERENCES cars(id) ON DELETE CASCADE",
+			ExcData{
+				err: nil,
+				ref: ReferenceMeta{
+					TableName:  "commands",
+					Name:       "commands_cars_car_id_id",
+					Column:     "car_id",
+					RefTable:   "cars",
+					RefColumn:  "id",
+					RefOptions: "ON DELETE CASCADE",
+				},
+			},
+		},
+		{"auth_users",
+			"fk_auth_users_users",
+			"FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			ExcData{
+				err: nil,
+				ref: ReferenceMeta{
+					TableName:  "auth_users",
+					Name:       "fk_auth_users_users",
+					Column:     "user_id",
+					RefTable:   "users",
+					RefColumn:  "id",
+					RefOptions: "ON DELETE CASCADE",
+				},
+			},
+		},
+		{"commands",
+			"fk_commands_cars_car_id_id_upd",
+			"FOREIGN KEY (car_id) REFERENCES cars(id) ON DELETE RESTRICT",
+			ExcData{
+				err: nil,
+				ref: ReferenceMeta{
+					TableName:  "commands",
+					Name:       "fk_commands_cars_car_id_id_upd",
+					Column:     "car_id",
+					RefTable:   "cars",
+					RefColumn:  "id",
+					RefOptions: "ON DELETE RESTRICT",
+				},
+			},
+		},
+		{"auth_users",
+			"fk_auth_users_users",
+			"CONSTRAINT KEYS (user_id, id) REFERENCES users (id) ON UPDATE DO NOTHING",
+			ExcData{
+				err: nil,
+				ref: ReferenceMeta{
+					TableName: "auth_users",
+					Name:      "fk_auth_users_users",
+				},
+			},
+		},
+		{"auth_users",
+			"fk_auth_users_users",
+			"FOREIGN KEY (user_id) REFERENCES ON users(id, user_id) ON DELETE CASCADE",
+			ExcData{
+				err: nil,
+				ref: ReferenceMeta{
+					TableName: "auth_users",
+					Name:      "fk_auth_users_users",
+				},
+			},
+		},
+	}
+
+	for n, tt := range testData {
+		t.Run(fmt.Sprintf("Testing parse constraint definition #%d", n), func(t *testing.T) {
+			res, err := ParseDatabaseReferences(tt.tableName, tt.refName, tt.refDef)
+
+			assert.Nil(t, err)
+			assert.Equal(t, res.Column, tt.excepted.ref.Column)
+			assert.Equal(t, res.RefTable, tt.excepted.ref.RefTable)
+			assert.Equal(t, res.RefColumn, tt.excepted.ref.RefColumn)
+			assert.Equal(t, res.RefOptions, tt.excepted.ref.RefOptions)
 		})
 	}
 }

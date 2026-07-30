@@ -12,11 +12,7 @@ func ParseDatabaseIndices(indexDef string) (IndexMeta, error) {
 	field_part := ` \((?<Exp>\w+\(\w+\))?(?<Fieldlist>[a-z_\s,]+)?(?<Collate>COLLATE [\w\d"-]+)?(?<Sort>[A-Z\s]+)?\)`
 	partial_part := `(?<Where> WHERE \([\w\d\s<>=:'"\-\(\)_]+\))?(?<Include> INCLUDE \(\w+\))?(?<With> WITH \([\w\d\s=]+\))?(?<Distinct> NULLS DISTINCT| NULLS NOT DISTINCT)?`
 
-	r, err := regexp.Compile(main_part + field_part + partial_part)
-
-	if err != nil {
-		return IndexMeta{}, err
-	}
+	r := regexp.MustCompile(main_part + field_part + partial_part)
 
 	type paramsMap map[string]string
 
@@ -31,7 +27,7 @@ func ParseDatabaseIndices(indexDef string) (IndexMeta, error) {
 	uniq := true
 	if idx["Unique"] == "" {
 		uniq = false
-	}	
+	}
 
 	var fields = []string{}
 	if idx["Fieldlist"] != "" {
@@ -39,11 +35,8 @@ func ParseDatabaseIndices(indexDef string) (IndexMeta, error) {
 			fields = append(fields, f)
 		}
 	}
+	rexp := regexp.MustCompile(`\w+\((?<Field>\w+)\)`)
 	if idx["Fieldlist"] == "" && idx["Exp"] != "" {
-		rexp, err := regexp.Compile(`\w+\((?<Field>\w+)\)`)
-		if err != nil {
-			return IndexMeta{}, err
-		}
 		match := rexp.FindStringSubmatch(idx["Exp"])
 		if len(match) > 1 {
 			fields = append(fields, match[1])
@@ -53,7 +46,7 @@ func ParseDatabaseIndices(indexDef string) (IndexMeta, error) {
 	var idxopts = []IndexOption{}
 	for i, fd := range fields {
 		var field = IndexOption{
-			Field:      fd,
+			Field:      strings.TrimSpace(fd),
 			Expression: idx["Exp"],
 			Sort:       idx["Sort"],
 			Collate:    idx["Collate"],
@@ -71,23 +64,22 @@ func ParseDatabaseIndices(indexDef string) (IndexMeta, error) {
 		Name:    idx["Name"],
 		Unique:  uniq,
 		Type:    idx["Type"],
-		Where:   idx["Where"],
-		Option:  idx["Include"] + idx["With"] + idx["Distinct"],
+		Where:   strings.TrimSpace(idx["Where"]),
+		Option:  strings.TrimSpace(idx["Include"] + idx["With"] + idx["Distinct"]),
 		Parsed:  parsable,
 		Columns: idxopts,
 	}
 	return IndexMeta, nil
 }
 
-func ParseDatabaseReferences(tableName string, refname string, refdef string) (ReferenceMeta, error) {
+func ParseDatabaseReferences(tableName string, refname string, refDef string) (ReferenceMeta, error) {
 	pattern := `FOREIGN KEY \((?<Column>\w+)\) REFERENCES (?<Reftable>\w+)\((?<Refcolumn>\w+)\)(?<Refoptions> .*)`
 
 	r := regexp.MustCompile(pattern)
 
 	type paramsMap map[string]string
-
 	ref := make(paramsMap, 0)
-	match := r.FindStringSubmatch(refdef)
+	match := r.FindStringSubmatch(refDef)
 	for i, name := range r.SubexpNames() {
 		if i > 0 && i <= len(match) {
 			ref[name] = match[i]

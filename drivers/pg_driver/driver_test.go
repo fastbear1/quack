@@ -67,6 +67,32 @@ func TestTransformType(t *testing.T) {
 	}
 }
 
+func TestTransformDefault(t *testing.T) {
+	var test = []struct {
+		columnType    string
+		columnDefault string
+		expect        string
+	}{
+		{
+			"varchar(10)",
+			"active",
+			"'active'::text",
+		},
+		{
+			"text",
+			"default text",
+			"'default text'::text",
+		},
+	}
+
+	for n, tt := range test {
+		t.Run(fmt.Sprintf("Testing transformation default value #%d\n", n), func(t *testing.T) {
+			res := (&PgDriver{}).TransformDefault(tt.columnType, tt.columnDefault)
+			assert.Equal(t, res, tt.expect)
+		})
+	}
+}
+
 func TestNormalizeVarChar(t *testing.T) {
 	var test = []struct {
 		name     string
@@ -105,15 +131,13 @@ func TestTransformNullToString(t *testing.T) {
 	}
 }
 
-// Tests for SQL creation methods
+// Tests for SQL commands
 func TestCreaetTabelStatement(t *testing.T) {
 	var test = []struct {
-		name      string
 		tablemeta TableMeta
 		expect    []string
 	}{
 		{
-			name: "simple test for create table SQL",
 			tablemeta: TableMeta{
 				Name: "test_table",
 				Columns: []Column{
@@ -160,17 +184,379 @@ func TestCreaetTabelStatement(t *testing.T) {
 				`DROP TABLE IF EXISTS "public"."test_table";`,
 			},
 		},
+		{
+			tablemeta: TableMeta{
+				Name: "simple_table",
+				Columns: []Column{
+					{
+						TableName:         "simple_table",
+						ColumnName:        "id",
+						DataType:          "uuid",
+						IsNullable:        false,
+						ColumnDefault:     "gen_random_uuid()",
+						IsPrimary:         true,
+						PrimaryConstraint: "simple_table_pkey",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "name",
+						DataType:          "varchar(255)",
+						IsNullable:        false,
+						ColumnDefault:     "",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "sid",
+						DataType:          "smallint",
+						IsNullable:        false,
+						ColumnDefault:     "",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "email",
+						DataType:          "varchar(255)",
+						IsNullable:        false,
+						ColumnDefault:     "",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "user_id",
+						DataType:          "uuid",
+						IsNullable:        false,
+						ColumnDefault:     "",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "status",
+						DataType:          "varchar(10)",
+						IsNullable:        false,
+						ColumnDefault:     "'active'::text",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "name_t",
+						DataType:          "varchar(255)",
+						IsNullable:        false,
+						ColumnDefault:     "",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "created_at",
+						DataType:          "timestamp",
+						IsNullable:        false,
+						ColumnDefault:     "now()",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+					{
+						TableName:         "simple_table",
+						ColumnName:        "updated_at",
+						DataType:          "timestamp",
+						IsNullable:        false,
+						ColumnDefault:     "now()",
+						IsPrimary:         false,
+						PrimaryConstraint: "",
+					},
+				},
+				References: []ReferenceMeta{},
+				Indeces:    []IndexMeta{},
+			},
+			expect: []string{
+				`CREATE TABLE "public"."simple_table"(
+	id uuid NOT NULL default gen_random_uuid(),
+	name varchar(255) NOT NULL,
+	sid smallint NOT NULL,
+	email varchar(255) NOT NULL,
+	user_id uuid NOT NULL,
+	status varchar(10) NOT NULL default 'active'::text,
+	name_t varchar(255) NOT NULL,
+	created_at timestamp NOT NULL default now(),
+	updated_at timestamp NOT NULL default now(),
+	PRIMARY KEY ("id")
+);`,
+				`DROP TABLE IF EXISTS "public"."simple_table";`,
+			},
+		},
 	}
 
 	conf := utils.ConfigYaml{}
 	conf.ReadConfig()
 
-	for _, tt := range test {
-		t.Run(tt.name, func(t *testing.T) {
-			sqlUp := (&PgDriver{}).CreateTableStatement(&tt.tablemeta)
-			sqlDown := (&PgDriver{}).DropTableStatement(&tt.tablemeta)
+	for n, tt := range test {
+		t.Run(fmt.Sprintf("ing method for creating table SQL command #%d", n), func(t *testing.T) {
+			drv := PgDriver{}
+			sqlUp := (&drv).CreateTableStatement(&tt.tablemeta)
+			sqlDown := (&drv).DropTableStatement(&tt.tablemeta)
 			assert.Equal(t, sqlUp, tt.expect[0])
 			assert.Equal(t, sqlDown, tt.expect[1])
 		})
 	}
+}
+
+func TestColumnStatements(t *testing.T) {
+	var testData = []struct {
+		column   Column
+		expected []string
+	}{
+		{
+			Column{
+				TableName:     "simple_table",
+				ColumnName:    "sid",
+				DataType:      "smallint",
+				IsNullable:    false,
+				ColumnDefault: "",
+			},
+			[]string{
+				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS sid smallint NOT NULL`,
+				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS sid`,
+			},
+		},
+		{
+
+			Column{
+				TableName:     "simple_table",
+				ColumnName:    "email",
+				DataType:      "varchar(255)",
+				IsNullable:    false,
+				ColumnDefault: "'test@mail.com'::text",
+			},
+			[]string{
+				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS email varchar(255) NOT NULL DEFAULT 'test@mail.com'::text`,
+				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS email`,
+			},
+		},
+		{
+			Column{
+				TableName:     "simple_table",
+				ColumnName:    "user_id",
+				DataType:      "uuid",
+				IsNullable:    false,
+				ColumnDefault: "gen_random_uuid()",
+			},
+			[]string{
+				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL DEFAULT gen_random_uuid()`,
+				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS user_id`,
+			},
+		},
+	}
+
+	for n, tt := range testData {
+		t.Run(fmt.Sprintf("Testing create and drlop column command #%d", n), func(t *testing.T) {
+			drv := PgDriver{}
+			sqlUp := (&drv).CreateColumnStatement(&tt.column)
+			sqlDown := (&drv).DropColumnStatement(&tt.column)
+			assert.Equal(t, sqlUp, tt.expected[0])
+			assert.Equal(t, sqlDown, tt.expected[1])
+		})
+	}
+}
+
+func TestCreateDropIndexStatement(t *testing.T) {
+	var testData = []struct {
+		idx       IndexMeta
+		excpected []string
+	}{
+		{
+			IndexMeta{
+				TableName: "auth_users",
+				Name:      "idx_auth_users_id",
+				Unique:    false,
+				Type:      "btree",
+				Where:     "",
+				Option:    "",
+				Parsed:    true,
+				Columns: []IndexOption{
+					IndexOption{
+						Field:      "id",
+						Expression: "",
+						Sort:       "",
+						Collate:    "",
+						Priority:   1,
+					},
+				},
+			},
+			[]string{
+				`CREATE INDEX IF NOT EXISTS "idx_auth_users_id" ON "public"."auth_users" USING btree (id);`,
+				`DROP INDEX IF EXISTS "idx_auth_users_id"`,
+			},
+		},
+		{
+			IndexMeta{
+				TableName: "auth_users",
+				Name:      "idx_auth_users_password",
+				Unique:    true,
+				Type:      "btree",
+				Where:     "WHERE NOT user_type=5",
+				Option:    "",
+				Parsed:    true,
+				Columns: []IndexOption{
+					IndexOption{
+						Field:      "password",
+						Expression: "",
+						Sort:       "",
+						Collate:    "",
+						Priority:   1,
+					},
+				},
+			},
+			[]string{
+				`CREATE INDEX IF NOT EXISTS "idx_auth_users_password" ON "public"."auth_users" UNIQUE USING btree (password);`,
+				`DROP INDEX IF EXISTS "idx_auth_users_password"`,
+			},
+		},
+		{
+			IndexMeta{
+				TableName: "auth_users",
+				Name:      "idx_auth_users_password_upper",
+				Unique:    true,
+				Type:      "btree",
+				Where:     "",
+				Option:    "",
+				Parsed:    true,
+				Columns: []IndexOption{
+					IndexOption{
+						Field:      "password",
+						Expression: "upper(password)",
+						Sort:       "",
+						Collate:    "",
+						Priority:   1,
+					},
+				},
+			},
+			[]string{
+				`CREATE INDEX IF NOT EXISTS "idx_auth_users_password_upper" ON "public"."auth_users" UNIQUE USING btree upper(password);`,
+				`DROP INDEX IF EXISTS "idx_auth_users_password_upper"`,
+			},
+		},
+		{
+			IndexMeta{
+				TableName: "auth_users",
+				Name:      "idx_auth_users_password_multi",
+				Unique:    false,
+				Type:      "btree",
+				Where:     "",
+				Option:    "",
+				Parsed:    true,
+				Columns: []IndexOption{
+					IndexOption{
+						Field:      "password",
+						Expression: "",
+						Sort:       "",
+						Collate:    "",
+						Priority:   3,
+					},
+					IndexOption{
+						Field:      "user_type",
+						Expression: "",
+						Sort:       "",
+						Collate:    "",
+						Priority:   2,
+					},
+					IndexOption{
+						Field:      "user_tag",
+						Expression: "",
+						Sort:       "",
+						Collate:    "",
+						Priority:   4,
+					},
+
+					IndexOption{
+						Field:      "user_id",
+						Expression: "",
+						Sort:       "",
+						Collate:    "",
+						Priority:   1,
+					},
+				},
+			},
+			[]string{
+				`CREATE INDEX IF NOT EXISTS "idx_auth_users_password_multi" ON "public"."auth_users" USING btree (user_id, user_type, password, user_tag);`,
+				`DROP INDEX IF EXISTS "idx_auth_users_password_multi"`,
+			},
+		},
+	}
+
+	for n, tt := range testData {
+		t.Run(fmt.Sprintf("Testing create index SQL statement #%d", n), func(t *testing.T) {
+			drv := PgDriver{}
+			sqlUp := (&drv).CreateIndexStatement(&tt.idx)
+			sqlDown := (&drv).DropIndexStatement(&tt.idx)
+			assert.Equal(t, sqlUp, tt.excpected[0])
+			assert.Equal(t, sqlDown, tt.excpected[1])
+
+		})
+	}
+}
+
+func TestCreateDropConstraintStatement(t *testing.T) {
+	var testData = []struct {
+		ref       ReferenceMeta
+		excpected []string
+	}{
+		{
+			ReferenceMeta{
+				TableName:  "commands",
+				Name:       "commands_cars_car_id_id",
+				Column:     "car_id",
+				RefTable:   "cars",
+				RefColumn:  "id",
+				RefOptions: "ON DELETE CASCADE",
+			},
+			[]string{
+				`ALTER TABLE "public"."commands" ADD CONSTRAINT IF NOT EXISTS "commands_cars_car_id_id" FOREIGN KEY (car_id) REFERENCES "public"."cars" (id) ON DELETE CASCADE`,
+				`ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "commands_cars_car_id_id"`,
+			},
+		},
+		{
+			ReferenceMeta{
+				TableName:  "auth_users",
+				Name:       "fk_auth_users_users",
+				Column:     "user_id",
+				RefTable:   "users",
+				RefColumn:  "id",
+				RefOptions: "ON DELETE CASCADE ON UPDATE DO NOTHING",
+			},
+			[]string{
+				`ALTER TABLE "public"."auth_users" ADD CONSTRAINT IF NOT EXISTS "fk_auth_users_users" FOREIGN KEY (user_id) REFERENCES "public"."users" (id) ON DELETE CASCADE ON UPDATE DO NOTHING`,
+				`ALTER TABLE "public"."auth_users" DROP CONSTRAINT IF EXISTS "fk_auth_users_users"`,
+			},
+		},
+		{
+			ReferenceMeta{
+				TableName:  "commands",
+				Name:       "fk_commands_cars_car_id_id_upd",
+				Column:     "car_id",
+				RefTable:   "cars",
+				RefColumn:  "id",
+				RefOptions: "ON DELETE RESTRICT",
+			},
+			[]string{
+				`ALTER TABLE "public"."commands" ADD CONSTRAINT IF NOT EXISTS "fk_commands_cars_car_id_id_upd" FOREIGN KEY (car_id) REFERENCES "public"."cars" (id) ON DELETE RESTRICT`,
+				`ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "fk_commands_cars_car_id_id_upd"`,
+			},
+		},
+	}
+	for n, tt := range testData {
+		t.Run(fmt.Sprintf("Testing create constraint SQL statement #%d", n), func(t *testing.T) {
+			drv := PgDriver{}
+			sqlUp := (&drv).CreateConstraintStatement(&tt.ref)
+			sqlDown := (&drv).DropConstraintStatement(&tt.ref)
+			assert.Equal(t, sqlUp, tt.excpected[0])
+			assert.Equal(t, sqlDown, tt.excpected[1])
+
+		})
+	}
+
 }

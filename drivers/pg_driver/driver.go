@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"text/template"
@@ -16,8 +17,12 @@ import (
 
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
+	"int":     "bigint",
+	"int16":   "smallint",
+	"int32":   "bigint",
 	"uint":    "bigint",
 	"uint16":  "smallint",
+	"uint32":  "bigint",
 	"string":  "text",
 	"float32": "real",
 	"float64": "double precision",
@@ -30,6 +35,7 @@ var funcMap = template.FuncMap{
 	},
 }
 
+// Define connection variables
 var (
 	conn    *pgx.Conn
 	connErr error
@@ -51,6 +57,7 @@ func GetPgDriver(ctx context.Context, conf *utils.ConfigYaml) *PgDriver {
 
 var _ DbInterface = (*PgDriver)(nil)
 
+// Get single connection
 func getConnection(ctx context.Context, uri string) (*pgx.Conn, error) {
 	dbCtx := ctx
 	dbURI := uri
@@ -61,34 +68,24 @@ func getConnection(ctx context.Context, uri string) (*pgx.Conn, error) {
 }
 
 func (pg *PgDriver) GetTablesList() ([]string, error) {
-	//conn, err := pgx.Connect(pg.ctx, string(pg.conf.Database.Uri))
 	conn, err := getConnection(pg.ctx, pg.conf.Database.Uri.String())
-
 	if err != nil {
 		return []string{}, err
 	}
 	defer conn.Close(pg.ctx)
-
 	// get tables list
-	dbtables, err := getDbTables(pg.conf, pg.ctx, conn)
-	if err != nil {
-		return []string{}, err
-	}
-	return dbtables, nil
-}
-
-func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([]string, error) {
 	var tables []string
 	rows, err := conn.Query(
-		ctx,
+		pg.ctx,
 		GetTableNamesQuery,
 		pgx.NamedArgs{
-			"db": conf.Database.Name,
+			"db": pg.conf.Database.Name,
 		},
 	)
 	defer rows.Close()
 	if err != nil {
 		fmt.Printf("Query error when getting tables list. %s", err)
+		return []string{}, err
 	}
 	for rows.Next() {
 		var name string
@@ -96,7 +93,7 @@ func getDbTables(conf *utils.ConfigYaml, ctx context.Context, conn *pgx.Conn) ([
 		if err != nil {
 			fmt.Println(err)
 		}
-		if utils.InArray(conf.Database.Exclude, name) {
+		if utils.InArray(pg.conf.Database.Exclude, name) {
 			fmt.Printf("Skipping table %s\n", name)
 		} else {
 			fmt.Printf("Found table %s\n", name)
@@ -183,6 +180,7 @@ func (pg *PgDriver) GetTableIndices(name string) ([]IndexMeta, error) {
 	var idxt []IndexMeta
 
 	if err != nil {
+		fmt.Println("Quering indices definition data error...")
 		return []IndexMeta{}, err
 	}
 	defer conn.Close(pg.ctx)
@@ -201,8 +199,7 @@ func (pg *PgDriver) GetTableIndices(name string) ([]IndexMeta, error) {
 	for row.Next() {
 		err = row.Scan(&idx_const_name, &idx_const_def)
 		utils.CheckErrLite(err)
-		idx, err := ParseDatabaseIndices(idx_const_def)
-		utils.CheckErrLite(err)
+		idx, _ := ParseDatabaseIndices(idx_const_def)
 		idxt = append(idxt, idx)
 	}
 
@@ -214,6 +211,7 @@ func (pg *PgDriver) GetTableReferences(name string) ([]ReferenceMeta, error) {
 	var ref []ReferenceMeta
 
 	if err != nil {
+		fmt.Println("Quering constraint definition data error...")
 		return []ReferenceMeta{}, err
 	}
 	defer conn.Close(pg.ctx)
@@ -232,11 +230,9 @@ func (pg *PgDriver) GetTableReferences(name string) ([]ReferenceMeta, error) {
 	for row.Next() {
 		err = row.Scan(&ref_name, &ref_const_def)
 		utils.CheckErrLite(err)
-		res, err := ParseDatabaseReferences(name, ref_name, ref_const_def)
-		utils.CheckErrLite(err)
+		res, _ := ParseDatabaseReferences(name, ref_name, ref_const_def)
 		ref = append(ref, res)
 	}
-
 	return ref, nil
 }
 
@@ -278,9 +274,13 @@ func (pg *PgDriver) TransformType(g_type string) string {
 
 func (pg *PgDriver) TransformDefault(columnType string, columnDefault string) string {
 	defValue := columnDefault
-	columnType = strings.Split(columnType, "(")[0]
+	r := regexp.MustCompile(`varchar\(\d+\)`)
+	if r.MatchString(columnType) {
+		defValue = fmt.Sprintf("'%s'::text", defValue)
+	}
+
 	switch columnType {
-	case "varchar":
+	case "text":
 		defValue = fmt.Sprintf("'%s'::text", defValue)
 	}
 	return defValue
@@ -337,20 +337,6 @@ func (pg *PgDriver) CreateColumnStatement(col *Column) string {
 
 func (pg *PgDriver) AlterColumnStatement(col *Column) string {
 	return getAlterColumnCommand(col, false)
-
-	// declate temporary strict for downgrade alter command
-
-	/*
-		var data = AlterData{
-			TableName:     col.TableName,
-			ColumnName:    col.ColumnName,
-			Type:          col.AlterState.Type,
-			DataType:      col.AlterState.DataType,
-			IsNullable:    col.AlterState.IsNullable,
-			ColumnDefault: col.AlterState.ColumnDefault,
-		}
-		sqlDown = getAlterColumnCommand(&data, true)
-	*/
 }
 
 func (pg *PgDriver) DropColumnStatement(col *Column) string {
@@ -414,10 +400,33 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 }
 
 func (pg *PgDriver) CreateIndexStatement(idx *IndexMeta) string {
-	//TODO: to refactor
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateIndexTmpl)
 	utils.CheckErrLite(err)
+
+	// prapre columns names for composite index
+	var fields string
+	flen := len(idx.Columns)
+
+	switch {
+	case flen > 1:
+		var farray []string
+		utils.SortArray(idx.Columns, func(i, j int) bool {
+			return idx.Columns[i].Priority > idx.Columns[j].Priority
+		})
+		for _, c := range idx.Columns {
+			farray = append(farray, c.Field)
+		}
+		fields = strings.Join(farray, ", ")
+	default:
+		fields = idx.Columns[0].Field
+	}
+
+	// prepare expression if exists
+	var expStr string
+	if idx.Columns[0].Expression != "" {
+		expStr = strings.Split(idx.Columns[0].Expression, "(")[0]
+	}
 
 	var t = struct {
 		TableName  string
@@ -431,8 +440,8 @@ func (pg *PgDriver) CreateIndexStatement(idx *IndexMeta) string {
 		idx.Name,
 		idx.Unique,
 		idx.Type,
-		idx.Columns[0].Expression,
-		idx.Columns[0].Field,
+		expStr,
+		fields,
 	}
 
 	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {

@@ -15,6 +15,15 @@ func InArray(s []string, el string) bool {
 	return false
 }
 
+func SortArray[S []E, E any](arr S, less func(a, b int) bool) {
+	for i := range len(arr) - 1 {
+		for j := i + 1; j > 0 && less(j-1, j); {
+			arr[j-1], arr[j] = arr[j], arr[j-1]
+			j--
+		}
+	}
+}
+
 func CheckErrLite(err error) {
 	if err != nil {
 		fmt.Println(err)

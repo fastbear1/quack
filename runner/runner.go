@@ -84,7 +84,7 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 		}
 		gormStructMeta = append(gormStructMeta, gsmeta)
 	}
-
+	fmt.Println(utils.PrettyPrint(gormStructMeta))
 	// step3: Compare current state of metadata for database tables and gorm structures
 	funcList, downFuncList := compareMetaState(dbTablesMeta, gormStructMeta)
 	var sqlUp, sqlDown []string
@@ -282,7 +282,6 @@ func createIndexName(table string, columns []string, exp string) string {
 }
 
 func parseReferenceEmbedStructs(drv DbInterface, table string, reftable string, tag string) ReferenceMeta {
-	// Example: gorm:"foreignKey:UserName;references:Name;referenceName:fk_auth_users_users;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;
 	var ref = ReferenceMeta{
 		TableName: drv.TransformName(table),
 	}

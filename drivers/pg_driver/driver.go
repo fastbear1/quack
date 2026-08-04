@@ -193,7 +193,10 @@ func (pg *PgDriver) GetTableIndices(name string) ([]IndexMeta, error) {
 		},
 	)
 	defer row.Close()
-	utils.CheckErrLite(err)
+	if err != nil {
+		fmt.Println("Quering table indices error...")
+		return []IndexMeta{}, err
+	}
 
 	var idx_const_name, idx_const_def string
 	for row.Next() {
@@ -224,8 +227,10 @@ func (pg *PgDriver) GetTableReferences(name string) ([]ReferenceMeta, error) {
 		},
 	)
 	defer row.Close()
-	utils.CheckErrLite(err)
-
+	if err != nil {
+		fmt.Println("Quering table constraints error...")
+		return []ReferenceMeta{}, err
+	}
 	var ref_name, ref_const_def string
 	for row.Next() {
 		err = row.Scan(&ref_name, &ref_const_def)
@@ -284,6 +289,33 @@ func (pg *PgDriver) TransformDefault(columnType string, columnDefault string) st
 		defValue = fmt.Sprintf("'%s'::text", defValue)
 	}
 	return defValue
+}
+
+func (pg *PgDriver) CreateIndexName(table string, columns []string, exp string) string {
+	indexName := "idx_"
+	columnsSuffix := ""
+	expSuffix := ""
+	if exp != "" {
+		expParts := strings.Split(exp, "(")
+		expSuffix += fmt.Sprintf("_%s", expParts[0])
+	}
+	for _, c := range columns {
+		columnsSuffix += fmt.Sprintf("_%s", c)
+	}
+	indexName += table + columnsSuffix + expSuffix
+	return indexName
+}
+
+func (pg *PgDriver) CreateConstraintName(table string, column string, refTable string, refColumn string) string {
+	return fmt.Sprintf("fk_%s_%s__%s_%s", table, column, refTable, refColumn)
+}
+
+func (pg *PgDriver) TransformConstraintAction(action string) string {
+	defaultAction := "ON DELETE"
+	if action == "OnUpdate" {
+		defaultAction = "ON UPDATE"
+	}
+	return defaultAction
 }
 
 func (pg *PgDriver) CreateTableStatement(t *TableMeta) string {

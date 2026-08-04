@@ -48,6 +48,139 @@ func getCatalogData(left []string, right []string) (strUp []string, strDown []st
 	return onleft, onright
 }
 
+func compareMetaState(dbmeta []TableMeta, gmeta []TableMeta) ([]func(drv DbInterface) string, []func(drv DbInterface) string) {
+	var (
+		upFuncList   []func(drv DbInterface) string
+		downFuncList []func(drv DbInterface) string
+		dbmap        = map[string]TableMeta{}
+		gmap         = map[string]TableMeta{}
+	)
+
+	if len(dbmeta) == 0 {
+		// return create table for all objects in gmeta
+		for _, str := range gmeta {
+			upFuncList = append(upFuncList, str.CreateTable)
+			downFuncList = append(downFuncList, str.DeleteTable)
+			for _, i := range str.Indeces {
+				upFuncList = append(upFuncList, i.CreateIndex)
+				downFuncList = append(downFuncList, i.DropIndex)
+			}
+		}
+		// job done, not enough data for comparing
+		return upFuncList, downFuncList
+	}
+	var (
+		left  = make([]string, 0)
+		right = make([]string, 0)
+	)
+	for _, l := range gmeta {
+		left = append(left, l.Name)
+		gmap[l.Name] = l
+	}
+	for _, r := range dbmeta {
+		right = append(right, r.Name)
+		dbmap[r.Name] = r
+	}
+
+	toDelete, toCreate := getCatalogData(left, right)
+
+	if len(toDelete) > 0 || len(toCreate) > 0 {
+		//TODO: inefficient
+		for _, cr := range toCreate {
+			for _, l := range gmeta {
+				if cr == l.Name {
+					upFuncList = append(upFuncList, l.CreateTable)
+					downFuncList = append(downFuncList, l.DeleteTable)
+					for _, idx := range l.Indeces {
+						upFuncList = append(upFuncList, idx.CreateIndex)
+						downFuncList = append(downFuncList, idx.DropIndex)
+					}
+				}
+			}
+		}
+
+		for _, dt := range toDelete {
+			for _, r := range dbmeta {
+				if dt == r.Name {
+					upFuncList = append(upFuncList, r.DeleteTable)
+					downFuncList = append(downFuncList, r.CreateTable)
+				}
+			}
+		}
+	}
+
+	// Check columns
+	// check all column are exists
+	for name, gtable := range gmap {
+		if dbtable, ok := dbmap[name]; !ok {
+			// Skipping tables that are not exists for now
+			continue
+		} else {
+			toCreateCol, toDeleteCol, toAlterCol := StateDifference(gtable.Columns, dbtable.Columns)
+			for _, c := range toCreateCol {
+				upFuncList = append(upFuncList, c.CreateColumn)
+				downFuncList = append(downFuncList, c.DeleteColumn)
+			}
+			for _, c := range toDeleteCol {
+				upFuncList = append(upFuncList, c.DeleteColumn)
+				downFuncList = append(downFuncList, c.CreateColumn)
+			}
+			// TODO: toAlterCol should return both table objects, first for altering Up, second for down migration
+			for _, c := range toAlterCol {
+				upFuncList = append(upFuncList, c.AlterColumn)
+			}
+		}
+	}
+	// now check that columns has same parameters
+
+	// Same shit for references
+	for name, gtable := range gmap {
+		if dbtable, ok := dbmap[name]; !ok {
+			// Skipping tables that are not exists for now
+			continue
+		} else {
+			toCreateRef, toDeleteRef, toAlterRef := referenceStateChanged(gtable.References, dbtable.References)
+			for _, c := range toCreateRef {
+				upFuncList = append(upFuncList, c.CreateConstraint)
+				downFuncList = append(downFuncList, c.DeleteConstraint)
+			}
+			for _, c := range toDeleteRef {
+				upFuncList = append(upFuncList, c.DeleteConstraint)
+				downFuncList = append(downFuncList, c.CreateConstraint)
+			}
+			for _, c := range toAlterRef {
+				upFuncList = append(upFuncList, c[1].DeleteConstraint, c[0].CreateConstraint)
+				downFuncList = append(downFuncList, c[0].DeleteConstraint, c[1].CreateConstraint)
+			}
+		}
+	}
+
+	// Same shit for indices
+	for name, gtable := range gmap {
+		if dbtable, ok := dbmap[name]; !ok {
+			// Skipping tables that are not exists for now
+			continue
+		} else {
+			toCreateIdx, toDeleteIdx, toAlterIdx := indicesStateChanged(gtable.Indeces, dbtable.Indeces)
+			for _, c := range toCreateIdx {
+				upFuncList = append(upFuncList, c.CreateIndex)
+				downFuncList = append(downFuncList, c.DropIndex)
+			}
+			for _, c := range toDeleteIdx {
+				upFuncList = append(upFuncList, c.DropIndex)
+				downFuncList = append(downFuncList, c.CreateIndex)
+			}
+			for _, c := range toAlterIdx {
+				upFuncList = append(upFuncList, c[1].DropIndex, c[0].CreateIndex)
+				downFuncList = append(downFuncList, c[0].DropIndex, c[1].CreateIndex)
+			}
+		}
+	}
+
+	// Not implemented
+	return upFuncList, downFuncList
+}
+
 // TODO: expensive code
 func StateDifference[T Meta](leftArray []T, rightArray []T) ([]T, []T, []T) {
 	var retLeft, retRight []T

@@ -85,6 +85,10 @@ type DbInterface interface {
 	TransformNull(nullable bool, def_val string) bool
 	TransformType(g_type string) string
 	TransformDefault(col_type string, val string) string
+	TransformConstraintAction(action string) string
+
+	CreateIndexName(table string, columns []string, exp string) string
+	CreateConstraintName(table string, column string, refTable string, refColumn string) string
 
 	CreateTableStatement(table *TableMeta) string
 	DropTableStatement(table *TableMeta) string

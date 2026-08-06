@@ -61,6 +61,8 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	var gormStructMeta []TableMeta
 
 	StructRaw, err := Scan(conf)
+	fmt.Println("++++++++++++++++++++++")
+	fmt.Println(utils.PrettyPrint(StructRaw))
 	if err != nil {
 		fmt.Printf("Error parsing directory with gorm models: %s", err)
 		return 1
@@ -76,7 +78,9 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 		}
 		gormStructMeta = append(gormStructMeta, gsmeta)
 	}
-
+	fmt.Println("++++++++++++++++++++++")
+	fmt.Println(utils.PrettyPrint(gormStructMeta))
+	fmt.Println("======================")
 	// step3: Compare current state of metadata for database tables and gorm structures
 	funcList, downFuncList := compareMetaState(dbTablesMeta, gormStructMeta)
 	var sqlUp, sqlDown []string

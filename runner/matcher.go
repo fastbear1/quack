@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"fmt"
+
 	. "github.com/fastbear1/quack/schema"
 )
 
@@ -49,6 +51,10 @@ func getCatalogData(left []string, right []string) (strUp []string, strDown []st
 }
 
 func compareMetaState(dbmeta []TableMeta, gmeta []TableMeta) ([]func(drv DbInterface) string, []func(drv DbInterface) string) {
+	fmt.Printf("%v\n", dbmeta)
+	fmt.Println("+++++++++++++++++++++++++++")
+	fmt.Printf("%v\n", gmeta)
+	fmt.Println("============================")
 	var (
 		upFuncList   []func(drv DbInterface) string
 		downFuncList []func(drv DbInterface) string

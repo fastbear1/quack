@@ -71,7 +71,7 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) ([]
 						fieldData.FieldName = field.Names[0].String()
 
 						if r, ok := field.Type.(*ast.Ident); ok && r.Obj != nil {
-							// FK column declarationi
+							// FK column declaration
 							var refField = FieldStruct{}
 							refField.FieldName = field.Names[0].String()
 							refField.FieldType = formatNode(fset, field.Type)

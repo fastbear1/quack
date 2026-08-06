@@ -308,3 +308,76 @@ func TestParseGormStructs(t *testing.T) {
 		})
 	}
 }
+
+func TestParseReferenceEmbedStructs(t *testing.T) {
+	type Result struct {
+		Name      string
+		Column    string
+		RefTable  string
+		RefColumn string
+		Options   string
+	}
+
+	var testDate = []struct {
+		tableName string
+		refTable  string
+		tag       string
+		expected  Result
+	}{
+		{
+			tableName: "TestTable",
+			refTable:  "Users",
+			tag:       `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE,OnUpdate:SET NULL;"`,
+			expected: Result{
+				Name:      "fk_TestTable_user_id__users_id",
+				Column:    "user_id",
+				RefTable:  "users",
+				RefColumn: "id",
+				Options:   "ON DELETE CASCADE ON UPDATE SET NULL",
+			},
+		},
+		{
+			tableName: "TestTable",
+			refTable:  "Cars",
+			tag:       `gorm:"foreignKey:CarId;referenceName:commands_cars_car_id_id;constraint:OnDelete:CASCADE;"`,
+			expected: Result{
+				Name:      "commands_cars_car_id_id",
+				Column:    "car_id",
+				RefTable:  "cars",
+				RefColumn: "id",
+				Options:   "ON DELETE CASCADE",
+			},
+		},
+		{
+			tableName: "TestTable",
+			refTable:  "Owners",
+			tag:       `gorm:"foreignKey:OwnerId;referenceName:commands_owner_owner_id_id;constraint:OnDelete:CASCADE;"`,
+			expected: Result{
+				Name:      "commands_owner_owner_id_id",
+				Column:    "owner_id",
+				RefTable:  "owners",
+				RefColumn: "id",
+				Options:   "ON DELETE CASCADE",
+			},
+		},
+	}
+
+	var conf utils.ConfigYaml
+	conf.ReadConfig()
+	conf.Database.Type = "postgres"
+
+	ctx := context.Background()
+	drv, _ := GetDriver(ctx, &conf)
+
+	for n, tt := range testDate {
+		t.Run(fmt.Sprintf("Test for parsing reference column #%d", n), func(t *testing.T) {
+			res := parseReferenceEmbedStructs(drv, tt.tableName, tt.refTable, tt.tag)
+			assert.Equal(t, res.Name, tt.expected.Name)
+			assert.Equal(t, res.Column, tt.expected.Column)
+			assert.Equal(t, res.RefTable, tt.expected.RefTable)
+			assert.Equal(t, res.RefColumn, tt.expected.RefColumn)
+			assert.Equal(t, res.RefOptions, tt.expected.Options)
+
+		})
+	}
+}

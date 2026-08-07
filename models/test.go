@@ -78,7 +78,7 @@ type Commands struct {
 	Cid   uuid.UUID `gorm:"type:uuid;index;default:uuidv4()"`
 	CarId uuid.UUID `gorm:"type:uuid;not null"`
 	Owner string    `gorm:"type:text;null"`
-	//Description string    `gorm:"type:text;null"`
+	// Description string    `gorm:"type:text;null"`
 	BudgetM float32   `gorm:"null"`
 	OwnerId uuid.UUID `gorm:"type:uuid;not null"`
 	Cars    Cars      `gorm:"foreignKey:CarId;referenceName:commands_cars_car_id_id;constraint:OnDelete:CASCADE;"`

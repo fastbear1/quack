@@ -77,7 +77,7 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 		gormStructMeta = append(gormStructMeta, gsmeta)
 	}
 	// step3: Compare current state of metadata for database tables and gorm structures
-	funcList, downFuncList := compareMetaState(dbTablesMeta, gormStructMeta)
+	funcList, downFuncList := compareMetaState(gormStructMeta, dbTablesMeta)
 	var sqlUp, sqlDown []string
 
 	for _, fup := range funcList {

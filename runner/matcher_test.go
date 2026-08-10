@@ -197,7 +197,8 @@ func TestCompareMetaState(t *testing.T) {
 	var testData = []struct {
 		leftData  []TableMeta
 		rightData []TableMeta
-		expected  string
+		expUp     []string
+		expDown   []string
 	}{
 		{
 			[]TableMeta{
@@ -224,7 +225,8 @@ func TestCompareMetaState(t *testing.T) {
 				},
 			},
 			[]TableMeta{},
-			"CreateTable",
+			[]string{"CreateTable"},
+			[]string{"DeleteTable"},
 		},
 		{
 			[]TableMeta{},
@@ -251,18 +253,558 @@ func TestCompareMetaState(t *testing.T) {
 					},
 				},
 			},
-			"DeleteTable",
+			[]string{"DeleteTable"},
+			[]string{"CreateTable"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "name",
+							TableName:     "TestTable",
+							DataType:      "varchar(255)",
+							IsNullable:    true,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+					},
+				},
+			},
+			[]string{"CreateColumn"},
+			[]string{"DeleteColumn"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "name",
+							TableName:     "TestTable",
+							DataType:      "varchar(255)",
+							IsNullable:    true,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]string{"DeleteColumn"},
+			[]string{"CreateColumn"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "name",
+							TableName:     "TestTable",
+							DataType:      "varchar(255)",
+							IsNullable:    true,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "name",
+							TableName:     "TestTable",
+							DataType:      "varchar(100)",
+							IsNullable:    true,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]string{"AlterColumn"},
+			[]string{"AlterColumn"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "user_id",
+							TableName:     "TestTable",
+							DataType:      "bigint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					References: []ReferenceMeta{
+						{
+							TableName:  "TestTable",
+							Name:       "ref_test_table_user_id",
+							Column:     "user_id",
+							RefTable:   "users",
+							RefColumn:  "id",
+							RefOptions: "ON DELETE CASCADE",
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "user_id",
+							TableName:     "TestTable",
+							DataType:      "bigint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]string{"CreateConstraint"},
+			[]string{"DeleteConstraint"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "user_id",
+							TableName:     "TestTable",
+							DataType:      "bigint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "user_id",
+							TableName:     "TestTable",
+							DataType:      "bigint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					References: []ReferenceMeta{
+						{
+							TableName:  "TestTable",
+							Name:       "ref_test_table_user_id",
+							Column:     "user_id",
+							RefTable:   "users",
+							RefColumn:  "id",
+							RefOptions: "ON DELETE CASCADE",
+						},
+					},
+				},
+			},
+			[]string{"DeleteConstraint"},
+			[]string{"CreateConstraint"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "user_id",
+							TableName:     "TestTable",
+							DataType:      "bigint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					References: []ReferenceMeta{
+						{
+							TableName:  "TestTable",
+							Name:       "ref_test_table_user_id",
+							Column:     "user_id",
+							RefTable:   "users",
+							RefColumn:  "id",
+							RefOptions: "ON DELETE CASCADE",
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "user_id",
+							TableName:     "TestTable",
+							DataType:      "bigint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					References: []ReferenceMeta{
+						{
+							TableName:  "TestTable",
+							Name:       "ref_test_table_user_id",
+							Column:     "user_id",
+							RefTable:   "users",
+							RefColumn:  "id",
+							RefOptions: "",
+						},
+					},
+				},
+			},
+			[]string{"DeleteConstraint", "CreateConstraint"},
+			[]string{"DeleteConstraint", "CreateConstraint"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "sid",
+							TableName:     "TestTable",
+							DataType:      "smallint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					Indeces: []IndexMeta{
+						{
+							TableName: "TestTable",
+							Name:      "idx_test_table_sid_index",
+							Unique:    true,
+							Type:      "btree",
+							Columns: []IndexOption{
+								{
+									Field:      "sid",
+									Expression: "",
+									Priority:   1,
+								},
+							},
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "sid",
+							TableName:     "TestTable",
+							DataType:      "smallint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]string{"CreateIndex"},
+			[]string{"DropIndex"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "sid",
+							TableName:     "TestTable",
+							DataType:      "smallint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "sid",
+							TableName:     "TestTable",
+							DataType:      "smallint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					Indeces: []IndexMeta{
+						{
+							TableName: "TestTable",
+							Name:      "idx_test_table_sid_index",
+							Unique:    true,
+							Type:      "btree",
+							Columns: []IndexOption{
+								{
+									Field:      "sid",
+									Expression: "",
+									Priority:   1,
+								},
+							},
+						},
+					},
+				},
+			},
+			[]string{"DropIndex"},
+			[]string{"CreateIndex"},
+		},
+		{
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "sid",
+							TableName:     "TestTable",
+							DataType:      "smallint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					Indeces: []IndexMeta{
+						{
+							TableName: "TestTable",
+							Name:      "idx_test_table_sid_index",
+							Unique:    true,
+							Type:      "btree",
+							Columns: []IndexOption{
+								{
+									Field:      "sid",
+									Expression: "",
+									Priority:   1,
+								},
+							},
+						},
+					},
+				},
+			},
+			[]TableMeta{
+				{
+					Name: "TestTable",
+					Columns: []Column{
+						{
+							ColumnName:    "id",
+							TableName:     "TestTable",
+							DataType:      "uuid",
+							IsNullable:    false,
+							ColumnDefault: "uuidv4()",
+							IsPrimary:     true,
+						},
+						{
+							ColumnName:    "sid",
+							TableName:     "TestTable",
+							DataType:      "smallint",
+							IsNullable:    false,
+							ColumnDefault: "",
+							IsPrimary:     false,
+						},
+					},
+					Indeces: []IndexMeta{
+						{
+							TableName: "TestTable",
+							Name:      "idx_test_table_sid_index",
+							Unique:    false,
+							Type:      "btree",
+							Columns: []IndexOption{
+								{
+									Field:      "sid",
+									Expression: "",
+									Priority:   1,
+								},
+							},
+						},
+					},
+				},
+			},
+			[]string{"DropIndex", "CreateIndex"},
+			[]string{"DropIndex", "CreateIndex"},
 		},
 	}
 
 	for n, tt := range testData {
-		t.Run(fmt.Sprintf("Testing compare meta state #%d\n", n), func(t *testing.T) {
-			fUp, _ := compareMetaState(tt.leftData, tt.rightData)
-			funcId := runtime.FuncForPC(reflect.ValueOf(fUp[0]).Pointer()).Name()
-			funcName := strings.TrimSuffix(strings.Split(funcId, ".")[3], "-fm")
-			fmt.Println(runtime.FuncForPC(reflect.ValueOf(fUp[0]).Pointer()).Name())
-
-			assert.Equal(t, funcName, tt.expected)
+		t.Run(fmt.Sprintf("Testing compare meta state (%s) #%d\n", tt.expUp[0], n), func(t *testing.T) {
+			fUp, fDown := compareMetaState(tt.leftData, tt.rightData)
+			for n, fu := range fUp {
+				funcId := runtime.FuncForPC(reflect.ValueOf(fu).Pointer()).Name()
+				funcName := strings.TrimSuffix(strings.Split(funcId, ".")[3], "-fm")
+				assert.Equal(t, funcName, tt.expUp[n])
+			}
+			for n, fd := range fDown {
+				funcId := runtime.FuncForPC(reflect.ValueOf(fd).Pointer()).Name()
+				funcName := strings.TrimSuffix(strings.Split(funcId, ".")[3], "-fm")
+				assert.Equal(t, funcName, tt.expDown[n])
+			}
 		})
 	}
 }

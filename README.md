@@ -1,5 +1,5 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
-[![Status](https://img.shields.io/badge/beta-0.28.3-blue)](https://github.com/fastbear1/quack/releases)
+[![Status](https://img.shields.io/badge/beta-0.29.1-blue)](https://github.com/fastbear1/quack/releases)
 [![Tests](https://github.com/fastbear1/quack/actions/workflows/citest.yml/badge.svg)](https://github.com/fastbear1/quack/actions/workflows/citest.yml)
 
 # quack
@@ -94,7 +94,7 @@ Example:
     quack --modesl=internal/models --path=migrations --uri=postgres://user:pass@host:port/database --dbname=database run MIGRATIONFILE_NAME·
 ```
 
-Flags that you specify from the command line override config file parameters. For different example of usage see [Playground](./playground/Menu.md) cases. 
+Flags that you specify from the command line override config file parameters. For different example of usage see [Sandbox](./sandbox/Menu.md) cases. 
 After file was created and checked use goose migration tool for applying newest migrations to database.
 
 ----------------

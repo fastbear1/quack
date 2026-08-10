@@ -6,10 +6,10 @@ database:
     - "users"
     - "goose_migrations"
 models:
-  path: "models"
+  path: "misc/models"
   exclude:
     - "Base"
     - "Users"
     - "AuthUsers"
 migrations:
-  path: "migrations"
+  path: "misc/migrations"

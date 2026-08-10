@@ -31,7 +31,7 @@ go.work.sum
 # Teting data
 migrations/
 models/
-misc/
+# misc/
 
 # Editor/IDE
 # .idea/

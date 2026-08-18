@@ -12,7 +12,7 @@ type PgColumn struct {
 	Is_nullable              string
 	Column_default           pgtype.Text
 	Is_identity              string
-	Identity_generation      string
+	Identity_generation      pgtype.Text
 }
 
 type AlterData struct {

@@ -14,7 +14,10 @@ SELECT
 	column_name, 
 	data_type, 
 	character_maximum_length, 
-	is_nullable, column_default 
+	is_nullable,
+	column_default,
+	is_identity,
+	identity_generation
 FROM information_schema.columns 
 WHERE table_name = @table`
 	FindPrimaryKeyQuery = `

@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -27,13 +26,13 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 
 	// Default column declaration
 	column := Column{
-		TableName:         model.Name,
-		ColumnName:        drv.TransformName(field.FieldName),
-		DataType:          drv.TransformType(field.FieldType),
-		IsNullable:        false,
-		ColumnDefault:     "",
-		IsPrimary:         false,
-		PrimaryConstraint: "",
+		TableName:      model.Name,
+		ColumnName:     drv.TransformName(field.FieldName),
+		DataType:       drv.TransformType(field.FieldType),
+		IsNullable:     false,
+		ColumnDefault:  "",
+		IsPrimary:      false,
+		PrimaryOptions: PrimaryOptions{},
 	}
 
 	if field.FieldTag != `` && strings.HasPrefix(field.FieldTag, "gorm:") {
@@ -54,7 +53,6 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 				}
 			case "primaryKey":
 				column.IsPrimary = true
-				column.PrimaryConstraint = fmt.Sprintf("%s_pkey", column.TableName)
 			case "not null":
 				// already initialized with false
 				column.IsNullable = false
@@ -124,6 +122,18 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 					model.Indeces = append(model.Indeces, idx)
 				}
 			}
+		}
+	}
+	// set primary key status
+	// postgres specification only
+	if column.IsPrimary {
+		if column.DataType == "serial" {
+			column.DataType = drv.TransformType(column.DataType)
+			column.PrimaryOptions.IsSerial = true
+		}
+		if strings.HasPrefix(column.ColumnDefault, "generated") {
+			column.PrimaryOptions.IsIdentity = true
+			column.ColumnDefault = strings.ToUpper(column.ColumnDefault)
 		}
 	}
 	model.Columns = append(model.Columns, column)

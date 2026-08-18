@@ -129,31 +129,41 @@ func (pg *PgDriver) GetTableColumnsMeta(name string) ([]Column, error) {
 	}
 	notes, err := pgx.CollectRows(rows, pgx.RowToStructByName[PgColumn])
 	if err != nil {
+		fmt.Println(name, err)
 		return []Column{}, err
 	}
 
-	pk_const_name, pk_column_name := pg.GetPrimaryKeyColumn(conn, pg.ctx, name)
+	_, pk_column_name := pg.GetPrimaryKeyColumn(conn, pg.ctx, name)
 
 	for i := 0; i < len(notes); i++ {
-		res = append(res, Column{
+		colmn := Column{
 			TableName:     name,
 			ColumnName:    notes[i].Column_name,
 			DataType:      normalizeCharacterVariyng(notes[i].Data_type, notes[i].Character_maximum_length),
 			IsNullable:    transformNullToString(notes[i].Is_nullable),
-			ColumnDefault: ParseColumnDefault(notes[i].Column_default.String)
+			ColumnDefault: notes[i].Column_default.String,
 			IsPrimary: func(lname string, rname string) bool {
 				if lname == rname {
 					return true
 				}
 				return false
 			}(notes[i].Column_name, pk_column_name),
-			PrimaryConstraint: func(lname string, rname string) string {
-				if lname == rname {
-					return pk_const_name
-				}
-				return ""
-			}(notes[i].Column_name, pk_column_name),
-		})
+			PrimaryOptions: PrimaryOptions{},
+		}
+
+		// parse primary key column correctly
+		if notes[i].Column_name == pk_column_name {
+			if strings.HasPrefix(notes[i].Column_default.String, "nextval") {
+				colmn.ColumnDefault = ""
+				colmn.PrimaryOptions.IsSerial = true
+			}
+			if notes[i].Is_identity == "YES" {
+				colmn.ColumnDefault = fmt.Sprintf("GENERATED %s AS IDENTITY", notes[i].Identity_generation.String)
+				colmn.PrimaryOptions.IsIdentity = true
+			}
+		}
+
+		res = append(res, colmn)
 	}
 	return res, nil
 }
@@ -329,11 +339,19 @@ func (pg *PgDriver) CreateTableStatement(t *TableMeta) string {
 
 	// find primary column
 	primary := ""
-	for _, c := range t.Columns {
+	for i, c := range t.Columns {
 		if c.IsPrimary {
 			primary = c.ColumnName
+			if c.PrimaryOptions.IsIdentity {
+				t.Columns[i].DataType = fmt.Sprintf("%s %s", c.DataType, c.ColumnDefault)
+				t.Columns[i].ColumnDefault = ""
+			}
+			if c.PrimaryOptions.IsSerial {
+				t.Columns[i].DataType = "serial"
+			}
 		}
 	}
+
 	var ft = struct {
 		PrimaryColumn string
 		*TableMeta

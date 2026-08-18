@@ -11,6 +11,11 @@ type AlterState struct {
 	ColumnDefault string
 }
 
+type PrimaryOptions struct {
+	IsSerial bool
+	IsIdentity bool
+}
+
 type Column struct {
 	TableName         string
 	ColumnName        string
@@ -18,7 +23,7 @@ type Column struct {
 	IsNullable        bool
 	ColumnDefault     string
 	IsPrimary         bool
-	PrimaryConstraint string
+	PrimaryOptions 	  PrimaryOptions
 	AlterState        AlterState
 }
 

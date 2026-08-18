@@ -117,7 +117,6 @@ func visitFiles(conf *utils.ConfigYaml, fset *token.FileSet, files []*ast.File) 
 			cached[model.Name] = model
 		}
 	}
-	fmt.Println(utils.PrettyPrint(models))
 	models = collectEmbedFileds(models, cached)
 	return models, nil
 }

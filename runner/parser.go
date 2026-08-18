@@ -23,13 +23,17 @@ func parseModelStruct(drv DbInterface, data ModelStruct) TableMeta {
 
 func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 	var idx IndexMeta
-
 	// Default column declaration
 	column := Column{
-		TableName:      model.Name,
-		ColumnName:     drv.TransformName(field.FieldName),
-		DataType:       drv.TransformType(field.FieldType),
-		IsNullable:     false,
+		TableName:  model.Name,
+		ColumnName: drv.TransformName(field.FieldName),
+		DataType:   drv.TransformType(field.FieldType),
+		IsNullable: func(force bool) bool {
+			if force {
+				return true
+			}
+			return false
+		}(field.ForceNull),
 		ColumnDefault:  "",
 		IsPrimary:      false,
 		PrimaryOptions: PrimaryOptions{},
@@ -55,7 +59,9 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 				column.IsPrimary = true
 			case "not null":
 				// already initialized with false
-				column.IsNullable = false
+				if !field.ForceNull {
+					column.IsNullable = false
+				}
 			case "null":
 				column.IsNullable = true
 			case "index", "uniqueindex":

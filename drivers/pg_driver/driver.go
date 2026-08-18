@@ -18,9 +18,11 @@ import (
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
 	"int":         "bigint",
+	"int8":        "smallint",
 	"int16":       "smallint",
 	"int32":       "bigint",
 	"uint":        "bigint",
+	"uint8":       "smallint",
 	"uint16":      "smallint",
 	"uint32":      "bigint",
 	"string":      "text",
@@ -30,6 +32,7 @@ var TypeConversion = map[string]string{
 	"timestamp":   "timestamp without time zone",
 	"timestamptz": "timestamp with time zone",
 	"serial":      "integer",
+	"uuid.UUID":   "uuid",
 }
 
 // Templates function for calculate last item
@@ -63,12 +66,13 @@ var _ DbInterface = (*PgDriver)(nil)
 
 // Get single connection
 func getConnection(ctx context.Context, uri string) (*pgx.Conn, error) {
-	dbCtx := ctx
-	dbURI := uri
-	once.Do(func() {
-		conn, connErr = pgx.Connect(dbCtx, dbURI)
-	})
-	return conn, connErr
+	//dbCtx := ctx
+	//dbURI := uri
+	//once.Do(func() {
+	//	conn, connErr = pgx.Connect(dbCtx, dbURI)
+	//})
+	//return conn, connErr
+	return pgx.Connect(ctx, uri)
 }
 
 func (pg *PgDriver) GetTablesList() ([]string, error) {

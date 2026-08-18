@@ -15,6 +15,7 @@ type FieldStruct struct {
 	FieldName string
 	FieldType string
 	FieldTag  string
+	ForceNull bool
 }
 
 type ModelStruct struct {
@@ -66,20 +67,40 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) ([]
 				}
 
 				for _, field := range e.Fields.List {
+					//ast.Print(fset, field)
 					if len(field.Names) > 0 {
 						fieldData := FieldStruct{}
 						fieldData.FieldName = field.Names[0].String()
 
-						if r, ok := field.Type.(*ast.Ident); ok && r.Obj != nil {
-							// FK column declaration
-							var refField = FieldStruct{}
-							refField.FieldName = field.Names[0].String()
-							refField.FieldType = formatNode(fset, field.Type)
+						switch t := field.Type.(type) {
+						case *ast.StarExpr:
+							// pointer value
+							fieldData.FieldType = formatNode(fset, t.X)
+							fieldData.ForceNull = true
 							if field.Tag != nil {
-								refField.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+								fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
 							}
-							modelData.ReferenceFields = append(modelData.ReferenceFields, refField)
-						} else {
+							modelData.Fields = append(modelData.Fields, fieldData)
+						case *ast.Ident:
+							if t.Obj != nil {
+								// FK column declaration
+								var refField = FieldStruct{}
+								refField.FieldName = field.Names[0].String()
+								refField.FieldType = formatNode(fset, field.Type)
+								if field.Tag != nil {
+									refField.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+								}
+								modelData.ReferenceFields = append(modelData.ReferenceFields, refField)
+
+							} else {
+								fieldData.FieldType = formatNode(fset, field.Type)
+								if field.Tag != nil {
+									fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+								}
+								modelData.Fields = append(modelData.Fields, fieldData)
+
+							}
+						default:
 							fieldData.FieldType = formatNode(fset, field.Type)
 							if field.Tag != nil {
 								fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]

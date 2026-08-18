@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	utils "github.com/fastbear1/quack/internal"
 	proc "github.com/fastbear1/quack/runner"
@@ -27,10 +28,42 @@ func TestInitDatabase(t *testing.T) {
 	assert.Equal(t, err, 0)
 
 	//getting migration file name
-	cmdres, _ := exec.Command("ls", "./migrations/").Output()
+	lsc, _ := exec.Command("ls", `./migrations/`).Output()
+	lscfile := strings.Split(string(lsc), "\n")[0]
 	// check that content of migration file is identical to original
-	filename := strings.TrimSuffix(string(cmdres), "\n")
-	assert.True(t, CompareFiles("../sandbox/case1/migrations/init-database.sql", fmt.Sprintf("./migrations/%s", filename)))
+	assert.True(t, CompareFiles("../sandbox/case1/migrations/init-database.sql", fmt.Sprintf("./migrations/%s", lscfile)))
+
+	home := os.Getenv("HOME")
+	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
+
+	var out bytes.Buffer
+	cmd.Stderr = &out
+
+	excErr := cmd.Run()
+	assert.Nil(t, excErr)
+	if excErr != nil {
+		fmt.Println(out.String())
+	}
+}
+
+func TestManageTableColumns(t *testing.T) {
+	//t.Skip("Skipping test")
+	time.Sleep(time.Second)
+	conf := getTestConfig()
+	conf.Models.Path = "../sandbox/case2/models"
+	conf.Migrations.Path = "migrations"
+
+	ctx := context.Background()
+	migrationFile := fmt.Sprintf("test-manage-columns")
+
+	err := proc.Run(ctx, conf, migrationFile)
+	assert.Equal(t, err, 0)
+
+	//getting migration file name
+	lsc, _ := exec.Command("ls", `./migrations/`).Output()
+	lscfile := strings.Split(string(lsc), "\n")[1]
+	// check that content of migration file is identical to original
+	assert.True(t, CompareFiles("../sandbox/case2/migrations/manage-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
 
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
@@ -58,7 +91,7 @@ func getTestConfig() *utils.ConfigYaml {
 }
 
 func CompareFiles(file1, file2 string) bool {
-	chunkSize := 4 * 1024
+	chunkSize := 128
 
 	// compare contents
 	f1, err := os.Open(file1)
@@ -69,6 +102,7 @@ func CompareFiles(file1, file2 string) bool {
 
 	f2, err := os.Open(file2)
 	if err != nil {
+		fmt.Println(err)
 		return false
 	}
 	defer f2.Close()
@@ -80,6 +114,9 @@ func CompareFiles(file1, file2 string) bool {
 		n2, err2 := io.ReadFull(f2, b2)
 
 		if !bytes.Equal(b1[:n1], b2[:n2]) {
+			fmt.Println(string(b1[:n1]))
+			fmt.Println("--------------")
+			fmt.Println(string(b2[:n2]))
 			return false
 		}
 

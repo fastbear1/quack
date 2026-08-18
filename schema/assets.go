@@ -12,19 +12,19 @@ type AlterState struct {
 }
 
 type PrimaryOptions struct {
-	IsSerial bool
+	IsSerial   bool
 	IsIdentity bool
 }
 
 type Column struct {
-	TableName         string
-	ColumnName        string
-	DataType          string
-	IsNullable        bool
-	ColumnDefault     string
-	IsPrimary         bool
-	PrimaryOptions 	  PrimaryOptions
-	AlterState        AlterState
+	TableName      string
+	ColumnName     string
+	DataType       string
+	IsNullable     bool
+	ColumnDefault  string
+	IsPrimary      bool
+	PrimaryOptions PrimaryOptions
+	AlterState     AlterState
 }
 
 type ReferenceMeta struct {

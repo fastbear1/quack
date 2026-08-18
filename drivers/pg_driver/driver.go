@@ -17,15 +17,19 @@ import (
 
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
-	"int":     "bigint",
-	"int16":   "smallint",
-	"int32":   "bigint",
-	"uint":    "bigint",
-	"uint16":  "smallint",
-	"uint32":  "bigint",
-	"string":  "text",
-	"float32": "real",
-	"float64": "double precision",
+	"int":         "bigint",
+	"int16":       "smallint",
+	"int32":       "bigint",
+	"uint":        "bigint",
+	"uint16":      "smallint",
+	"uint32":      "bigint",
+	"string":      "text",
+	"float32":     "real",
+	"float64":     "double precision",
+	"time.Time":   "timestamp without time zone",
+	"timestamp":   "timestamp without time zone",
+	"timestamptz": "timestamp with time zone",
+	"serial":      "integer",
 }
 
 // Templates function for calculate last item
@@ -136,7 +140,7 @@ func (pg *PgDriver) GetTableColumnsMeta(name string) ([]Column, error) {
 			ColumnName:    notes[i].Column_name,
 			DataType:      normalizeCharacterVariyng(notes[i].Data_type, notes[i].Character_maximum_length),
 			IsNullable:    transformNullToString(notes[i].Is_nullable),
-			ColumnDefault: notes[i].Column_default.String,
+			ColumnDefault: ParseColumnDefault(notes[i].Column_default.String)
 			IsPrimary: func(lname string, rname string) bool {
 				if lname == rname {
 					return true
@@ -278,7 +282,7 @@ func (pg *PgDriver) TransformType(g_type string) string {
 }
 
 func (pg *PgDriver) TransformDefault(columnType string, columnDefault string) string {
-	defValue := columnDefault
+	defValue := strings.ToLower(columnDefault)
 	r := regexp.MustCompile(`varchar\(\d+\)`)
 	if r.MatchString(columnType) {
 		defValue = fmt.Sprintf("'%s'::text", defValue)

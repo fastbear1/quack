@@ -52,7 +52,7 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 				if val := getValue(kit, kitLen, 1); val != "" {
 					column.ColumnDefault = drv.TransformDefault(column.DataType, val)
 				}
-			case "primary_key":
+			case "primaryKey":
 				column.IsPrimary = true
 				column.PrimaryConstraint = fmt.Sprintf("%s_pkey", column.TableName)
 			case "not null":
@@ -125,8 +125,8 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 				}
 			}
 		}
-		model.Columns = append(model.Columns, column)
 	}
+	model.Columns = append(model.Columns, column)
 }
 
 func ParseTagSetting(str string, sep string) map[string]string {

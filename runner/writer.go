@@ -12,14 +12,18 @@ import (
 
 func writeToFile(conf *utils.ConfigYaml, fileName string, sqlUp []string, sqlDown []string) {
 	path := fmt.Sprintf("./%s/%d_%s.sql", conf.Migrations.Path, time.Now().Unix(), fileName)
-	var f io.Writer
+	var f io.WriteCloser
 	var err error
+
 	if !conf.Silent {
 		f, err = os.Create(path)
 		utils.CheckErrLite(err)
 	} else {
 		f = os.Stdout
 	}
+
+	defer f.Close()
+
 	w := bufio.NewWriter(f)
 	_, err = w.WriteString("-- +goose Up\n")
 	utils.CheckErrLite(err)

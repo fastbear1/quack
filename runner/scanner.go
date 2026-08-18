@@ -64,10 +64,10 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) ([]
 					EmbedFields:     make([]string, 0),
 					ReferenceFields: make([]FieldStruct, 0),
 				}
-				var fieldData FieldStruct
 
 				for _, field := range e.Fields.List {
 					if len(field.Names) > 0 {
+						fieldData := FieldStruct{}
 						fieldData.FieldName = field.Names[0].String()
 
 						if r, ok := field.Type.(*ast.Ident); ok && r.Obj != nil {
@@ -117,6 +117,7 @@ func visitFiles(conf *utils.ConfigYaml, fset *token.FileSet, files []*ast.File) 
 			cached[model.Name] = model
 		}
 	}
+	fmt.Println(utils.PrettyPrint(models))
 	models = collectEmbedFileds(models, cached)
 	return models, nil
 }

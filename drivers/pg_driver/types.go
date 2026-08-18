@@ -11,6 +11,8 @@ type PgColumn struct {
 	Character_maximum_length pgtype.Uint32
 	Is_nullable              string
 	Column_default           pgtype.Text
+	Is_identity              string
+	Identity_generation      string
 }
 
 type AlterData struct {

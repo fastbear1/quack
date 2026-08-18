@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 
+	utils "github.com/fastbear1/quack/internal"
 	. "github.com/fastbear1/quack/schema"
 )
 
@@ -49,6 +50,9 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 		upFuncList   []func(drv DbInterface) string
 		downFuncList []func(drv DbInterface) string
 	)
+
+	//fmt.Println(utils.PrettyPrint(gmeta))
+	fmt.Println(utils.PrettyPrint(dbmeta))
 
 	if len(dbmeta) == 0 {
 		// return create table for all objects in gmeta

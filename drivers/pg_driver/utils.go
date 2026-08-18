@@ -1,6 +1,7 @@
 package pgdriver
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -95,4 +96,16 @@ func ParseDatabaseReferences(tableName string, refname string, refDef string) (R
 		RefOptions: strings.TrimSpace(ref["Refoptions"]),
 	}
 	return refmeta, nil
+}
+
+func ParseColumnDefault(colPrimary bool, colDefault string, IsIdentity string, Identity string) string {
+	if colPrimary {
+		if strings.HasPrefix(colDefault, "nextval") {
+			return ""
+		}
+		if IsIdentity == "YES" {
+			return fmt.Sprintf("GENERATED %s AS IDENTITY", Identity)
+		}
+	}
+	return colDefault
 }

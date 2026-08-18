@@ -63,10 +63,10 @@ const (
 );`
 	DropTableTmpl        = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
 	CreateColumnTmpl     = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} DEFAULT {{ .ColumnDefault }}{{ end }};`
-	AlterColumnTmpl      = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN IF EXISTS {{ .ColumnName }};`
+	AlterColumnTmpl      = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }}`
 	DropColumnTmpl       = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN IF EXISTS {{ .ColumnName }};`
-	CreateIndexTmpl      = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
-	DropIndexTmpl        = `DROP INDEX IF EXISTS "{{.Name}};"`
-	CreateConstraintTmpl = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT IF NOT EXISTS "{{.Name}}" FOREIGN KEY ({{.Column}}) REFERENCES "public"."{{.RefTable}}" ({{.RefColumn}}){{if .RefOptions}} {{.RefOptions}}{{end}};`
+	CreateIndexTmpl      = `CREATE{{if .Unique}} UNIQUE{{end}} INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}" USING {{.Type}} {{if .Expression}}({{.Expression}}({{.Columns}})){{else}}({{.Columns}}){{end}};`
+	DropIndexTmpl        = `DROP INDEX IF EXISTS "{{.Name}}";`
+	CreateConstraintTmpl = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ({{.Column}}) REFERENCES "public"."{{.RefTable}}" ({{.RefColumn}}){{if .RefOptions}} {{.RefOptions}}{{end}};`
 	DropConstraintTmpl   = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}};"`
 )

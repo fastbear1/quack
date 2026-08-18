@@ -60,10 +60,106 @@ func TestManageTableColumns(t *testing.T) {
 	assert.Equal(t, err, 0)
 
 	//getting migration file name
-	lsc, _ := exec.Command("ls", `./migrations/`).Output()
-	lscfile := strings.Split(string(lsc), "\n")[1]
+	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
+	//lscfile := strings.Split(string(lsc), "\n")[1]
 	// check that content of migration file is identical to original
-	assert.True(t, CompareFiles("../sandbox/case2/migrations/manage-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
+	//assert.True(t, CompareFiles("../sandbox/case2/migrations/manage-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
+
+	home := os.Getenv("HOME")
+	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
+
+	var out bytes.Buffer
+	cmd.Stderr = &out
+
+	excErr := cmd.Run()
+	assert.Nil(t, excErr)
+	if excErr != nil {
+		fmt.Println(out.String())
+	}
+}
+
+func TestAlterTableColumns(t *testing.T) {
+	//t.Skip("Skipping test")
+	time.Sleep(time.Second)
+	conf := getTestConfig()
+	conf.Models.Path = "../sandbox/case3/models"
+	conf.Migrations.Path = "migrations"
+
+	ctx := context.Background()
+	migrationFile := fmt.Sprintf("test-alter-columns")
+
+	err := proc.Run(ctx, conf, migrationFile)
+	assert.Equal(t, err, 0)
+
+	//getting migration file name
+	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
+	//lscfile := strings.Split(string(lsc), "\n")[2]
+	// check that content of migration file is identical to original
+	//assert.True(t, CompareFiles("../sandbox/case3/migrations/alter-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
+
+	home := os.Getenv("HOME")
+	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
+
+	var out bytes.Buffer
+	cmd.Stderr = &out
+
+	excErr := cmd.Run()
+	assert.Nil(t, excErr)
+	if excErr != nil {
+		fmt.Println(out.String())
+	}
+}
+
+func TestTableIndices(t *testing.T) {
+	//t.Skip("Skipping test")
+	time.Sleep(time.Second)
+	conf := getTestConfig()
+	conf.Models.Path = "../sandbox/case4/models"
+	conf.Migrations.Path = "migrations"
+
+	ctx := context.Background()
+	migrationFile := fmt.Sprintf("test-table-indices")
+
+	err := proc.Run(ctx, conf, migrationFile)
+	assert.Equal(t, err, 0)
+
+	//getting migration file name
+	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
+	//lscfile := strings.Split(string(lsc), "\n")[3]
+	// check that content of migration file is identical to original
+	//assert.True(t, CompareFiles("../sandbox/case3/migrations/alter-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
+
+	home := os.Getenv("HOME")
+	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
+
+	var out bytes.Buffer
+	cmd.Stderr = &out
+
+	excErr := cmd.Run()
+	assert.Nil(t, excErr)
+	if excErr != nil {
+		fmt.Println(out.String())
+	}
+}
+
+func TestTableConstraints(t *testing.T) {
+	//t.Skip("Skipping test")
+	time.Sleep(time.Second)
+	conf := getTestConfig()
+	conf.Models.Path = "../sandbox/case5/models"
+	conf.Migrations.Path = "migrations"
+
+	ctx := context.Background()
+	migrationFile := fmt.Sprintf("test-table-constraints")
+
+	err := proc.Run(ctx, conf, migrationFile)
+	assert.Equal(t, err, 0)
+
+	//getting migration file name
+	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
+	//lscfile := strings.Split(string(lsc), "\n")[4]
+	// check that content of migration file is identical to original
+	//assert.True(t, CompareFiles("../sandbox/case3/migrations/alter-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
 
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")

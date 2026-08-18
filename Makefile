@@ -11,7 +11,7 @@ test:
 
 int-test:
 	@docker-compose -f misc/dokcer-compose.yaml up -d
-	@PGPASSWORD=pass psql -U quack -h localhost -d quack -p 5432 -c "DROP TABLE IF EXISTS test_table_a;DROP TABLE IF EXISTS test_table_b;DROP TABLE IF EXISTS test_table_c;"
+	@PGPASSWORD=pass psql -U quack -h localhost -d quack -p 5432 -c "DROP TABLE IF EXISTS test_table_c;DROP TABLE IF EXISTS test_table_b;DROP TABLE IF EXISTS test_table_a;"
 	@rm -rf tests/migrations
 	@mkdir tests/migrations
 	@go test -v ./tests

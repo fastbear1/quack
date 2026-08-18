@@ -454,7 +454,7 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 			}
 		}
 	}
-	return sql
+	return sql + ";"
 }
 
 func (pg *PgDriver) CreateIndexStatement(idx *IndexMeta) string {

@@ -59,12 +59,6 @@ func TestManageTableColumns(t *testing.T) {
 	err := proc.Run(ctx, conf, migrationFile)
 	assert.Equal(t, err, 0)
 
-	//getting migration file name
-	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
-	//lscfile := strings.Split(string(lsc), "\n")[1]
-	// check that content of migration file is identical to original
-	//assert.True(t, CompareFiles("../sandbox/case2/migrations/manage-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
-
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
 
@@ -90,12 +84,6 @@ func TestAlterTableColumns(t *testing.T) {
 
 	err := proc.Run(ctx, conf, migrationFile)
 	assert.Equal(t, err, 0)
-
-	//getting migration file name
-	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
-	//lscfile := strings.Split(string(lsc), "\n")[2]
-	// check that content of migration file is identical to original
-	//assert.True(t, CompareFiles("../sandbox/case3/migrations/alter-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
 
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
@@ -123,12 +111,6 @@ func TestTableIndices(t *testing.T) {
 	err := proc.Run(ctx, conf, migrationFile)
 	assert.Equal(t, err, 0)
 
-	//getting migration file name
-	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
-	//lscfile := strings.Split(string(lsc), "\n")[3]
-	// check that content of migration file is identical to original
-	//assert.True(t, CompareFiles("../sandbox/case3/migrations/alter-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
-
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
 
@@ -155,12 +137,6 @@ func TestTableConstraints(t *testing.T) {
 	err := proc.Run(ctx, conf, migrationFile)
 	assert.Equal(t, err, 0)
 
-	//getting migration file name
-	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
-	//lscfile := strings.Split(string(lsc), "\n")[4]
-	// check that content of migration file is identical to original
-	//assert.True(t, CompareFiles("../sandbox/case3/migrations/alter-columns.sql", fmt.Sprintf("./migrations/%s", lscfile)))
-
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
 
@@ -184,44 +160,4 @@ func getTestConfig() *utils.ConfigYaml {
 	conf.Database.Exclude = append(conf.Database.Exclude, "goose_migrations", "goose_db_version")
 
 	return &conf
-}
-
-func CompareFiles(file1, file2 string) bool {
-	chunkSize := 128
-
-	// compare contents
-	f1, err := os.Open(file1)
-	if err != nil {
-		return false
-	}
-	defer f1.Close()
-
-	f2, err := os.Open(file2)
-	if err != nil {
-		fmt.Println(err)
-		return false
-	}
-	defer f2.Close()
-
-	b1 := make([]byte, chunkSize)
-	b2 := make([]byte, chunkSize)
-	for {
-		n1, err1 := io.ReadFull(f1, b1)
-		n2, err2 := io.ReadFull(f2, b2)
-
-		if !bytes.Equal(b1[:n1], b2[:n2]) {
-			fmt.Println(string(b1[:n1]))
-			fmt.Println("--------------")
-			fmt.Println(string(b2[:n2]))
-			return false
-		}
-
-		if (err1 == io.EOF && err2 == io.EOF) || (err1 == io.ErrUnexpectedEOF && err2 == io.ErrUnexpectedEOF) {
-			return true
-		}
-
-		if err1 != nil || err2 != nil {
-			return false
-		}
-	}
 }

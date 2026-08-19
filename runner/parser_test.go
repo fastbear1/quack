@@ -44,7 +44,7 @@ func TestParseGormStructs(t *testing.T) {
 					{
 						FieldName: "ID",
 						FieldType: "uuid.UUID",
-						FieldTag:  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`,
+						FieldTag:  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`,
 					},
 				},
 			},

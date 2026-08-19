@@ -69,5 +69,5 @@ const (
 	CreateIndexTmpl      = `CREATE{{if .Unique}} UNIQUE{{end}} INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}" USING {{.Type}} {{if .Expression}}({{.Expression}}({{.Columns}})){{else}}({{.Columns}}){{end}};`
 	DropIndexTmpl        = `DROP INDEX IF EXISTS "{{.Name}}";`
 	CreateConstraintTmpl = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ({{.Column}}) REFERENCES "public"."{{.RefTable}}" ({{.RefColumn}}){{if .RefOptions}} {{.RefOptions}}{{end}};`
-	DropConstraintTmpl   = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}};"`
+	DropConstraintTmpl   = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}}";`
 )

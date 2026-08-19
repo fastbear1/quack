@@ -122,10 +122,6 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 				case 0:
 					fmt.Printf("Index presented on both sides %s (%v)\n", n, right.Columns[ind.r])
 					if state := isIndexSchemaChanged(&left.Indeces[ind.l], &right.Indeces[ind.r]); state {
-						fmt.Println(utils.PrettyPrint(left.Indeces[ind.l]))
-						fmt.Println("-----------------------")
-						fmt.Println(utils.PrettyPrint(right.Indeces[ind.r]))
-						fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 						upFuncList = append(upFuncList, right.Indeces[ind.r].DropIndex, left.Indeces[ind.l].CreateIndex)
 						downFuncList = append(downFuncList, left.Indeces[ind.l].DropIndex, right.Indeces[ind.r].CreateIndex)
 					}
@@ -192,6 +188,10 @@ func isIndexSchemaChanged(l *IndexMeta, r *IndexMeta) bool {
 		return true
 	}
 
+	utils.SortArray(l.Columns, func(i, j int) bool {
+		return l.Columns[i].Priority > l.Columns[j].Priority
+	})
+
 	// we've already checked that len of columns for left and right data is equal
 	for i, v := range l.Columns {
 		if v.Field != r.Columns[i].Field {
@@ -199,23 +199,5 @@ func isIndexSchemaChanged(l *IndexMeta, r *IndexMeta) bool {
 		}
 	}
 
-	/*
-		lfields := map[string]uint16{}
-		rfields := map[string]uint16{}
-
-		for _, lv := range l.Columns {
-			lfields[lv.Field] = uint16(lv.Priority)
-		}
-		for _, rv := range r.Columns {
-			rfields[rv.Field] = uint16(rv.Priority)
-		}
-
-		for lk, lv := range lfields {
-			rv, ok := rfields[lk]
-			if !ok || lv != rv {
-				return true
-			}
-		}
-	*/
 	return false
 }

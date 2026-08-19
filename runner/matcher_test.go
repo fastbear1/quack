@@ -388,7 +388,7 @@ func TestCompareMetaState(t *testing.T) {
 				},
 			},
 			[]string{"AlterColumn"},
-			[]string{"AlterColumn"},
+			[]string{"AlterDowngradeColumn"},
 		},
 		{
 			[]TableMeta{

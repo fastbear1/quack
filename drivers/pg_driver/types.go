@@ -12,6 +12,7 @@ type PgColumn struct {
 	Is_nullable              string
 	Column_default           pgtype.Text
 	Is_identity              string
+	Udt_name                 string
 	Identity_generation      pgtype.Text
 }
 

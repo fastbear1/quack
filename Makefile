@@ -10,7 +10,7 @@ test:
 	@cp ./misc/quack_config_original.yaml ./quack_config.yaml
 
 int-test:
-	@docker-compose -f misc/dokcer-compose.yaml up -d
+	@docker-compose -f misc/docker-compose.yaml up -d
 	@PGPASSWORD=pass psql -U quack -h localhost -d quack -p 5432 -c "DROP TABLE IF EXISTS test_table_c;DROP TABLE IF EXISTS test_table_b;DROP TABLE IF EXISTS test_table_a;"
 	@rm -rf tests/migrations
 	@mkdir tests/migrations

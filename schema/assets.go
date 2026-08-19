@@ -9,6 +9,7 @@ type AlterState struct {
 	DataType      string
 	IsNullable    bool
 	ColumnDefault string
+	Processed     bool
 }
 
 type PrimaryOptions struct {
@@ -24,7 +25,7 @@ type Column struct {
 	ColumnDefault  string
 	IsPrimary      bool
 	PrimaryOptions PrimaryOptions
-	AlterState     AlterState
+	AlterState     []AlterState
 }
 
 type ReferenceMeta struct {
@@ -99,6 +100,7 @@ type DbInterface interface {
 	DropTableStatement(table *TableMeta) string
 	CreateColumnStatement(col *Column) string
 	AlterColumnStatement(col *Column) string
+	AlterDowngadeColumnStatement(col *Column) string
 	DropColumnStatement(col *Column) string
 	CreateIndexStatement(idx *IndexMeta) string
 	DropIndexStatement(idx *IndexMeta) string
@@ -121,6 +123,10 @@ func (col *Column) CreateColumn(drv DbInterface) string {
 
 func (col *Column) AlterColumn(drv DbInterface) string {
 	return drv.AlterColumnStatement(col)
+}
+
+func (col *Column) AlterDowngradeColumn(drv DbInterface) string {
+	return drv.AlterDowngadeColumnStatement(col)
 }
 
 func (col *Column) DeleteColumn(drv DbInterface) string {

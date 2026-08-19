@@ -1,16 +1,13 @@
 version: 0.1
 database:
-  uri: "postgres://quack:pass@postgres:5432/quack"
-  name: "quack"
+  uri: "postgres"
+  name: "test"
   exclude:
-    - "users"
-    - "goose_migrations"
-    - "goose_db_version"
+    - "test_table_1"
 models:
-  path: "misc/models"
+  path: "test"
   exclude:
     - "Base"
-    - "Users"
-    - "AuthUsers"
+    - "Test"
 migrations:
-  path: "misc/migrations"
+  path: "test"

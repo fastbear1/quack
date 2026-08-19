@@ -16,6 +16,7 @@ SELECT
 	character_maximum_length, 
 	is_nullable,
 	column_default,
+	udt_name,
 	is_identity,
 	identity_generation
 FROM information_schema.columns 
@@ -63,7 +64,7 @@ const (
 );`
 	DropTableTmpl        = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
 	CreateColumnTmpl     = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} DEFAULT {{ .ColumnDefault }}{{ end }};`
-	AlterColumnTmpl      = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }}`
+	AlterColumnTmpl      = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }} `
 	DropColumnTmpl       = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN IF EXISTS {{ .ColumnName }};`
 	CreateIndexTmpl      = `CREATE{{if .Unique}} UNIQUE{{end}} INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}" USING {{.Type}} {{if .Expression}}({{.Expression}}({{.Columns}})){{else}}({{.Columns}}){{end}};`
 	DropIndexTmpl        = `DROP INDEX IF EXISTS "{{.Name}}";`

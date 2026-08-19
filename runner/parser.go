@@ -37,6 +37,7 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 		ColumnDefault:  "",
 		IsPrimary:      false,
 		PrimaryOptions: PrimaryOptions{},
+		AlterState:     []AlterState{},
 	}
 
 	if field.FieldTag != `` && strings.HasPrefix(field.FieldTag, "gorm:") {
@@ -165,7 +166,7 @@ func ParseTagSetting(str string, sep string) map[string]string {
 		if len(values) >= 2 {
 			val := strings.Join(values[1:], ":")
 			val = strings.ReplaceAll(val, `\"`, `"`)
-			settings[k] = val
+			settings[k] = strings.ToLower(val)
 		} else if k != "" {
 			settings[k] = k
 		}

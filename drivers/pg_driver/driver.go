@@ -143,7 +143,7 @@ func (pg *PgDriver) GetTableColumnsMeta(name string) ([]Column, error) {
 		colmn := Column{
 			TableName:     name,
 			ColumnName:    notes[i].Column_name,
-			DataType:      normalizeCharacterVariyng(notes[i].Data_type, notes[i].Character_maximum_length),
+			DataType:      normalizeColumnDataType(notes[i].Data_type, notes[i].Character_maximum_length, notes[i].Udt_name),
 			IsNullable:    transformNullToString(notes[i].Is_nullable),
 			ColumnDefault: notes[i].Column_default.String,
 			IsPrimary: func(lname string, rname string) bool {
@@ -305,6 +305,14 @@ func (pg *PgDriver) TransformDefault(columnType string, columnDefault string) st
 	switch columnType {
 	case "text":
 		defValue = fmt.Sprintf("'%s'::text", defValue)
+	case "json":
+		defValue = fmt.Sprintf("%s::json", defValue)
+	case "jsonb":
+		defValue = fmt.Sprintf("%s::jsonb", defValue)
+	case "integer[]":
+		defValue = fmt.Sprintf("%s::integer[]", defValue)
+	case "text[]":
+		defValue = fmt.Sprintf("%s::text[]", defValue)
 	}
 	return defValue
 }
@@ -394,7 +402,28 @@ func (pg *PgDriver) CreateColumnStatement(col *Column) string {
 }
 
 func (pg *PgDriver) AlterColumnStatement(col *Column) string {
-	return getAlterColumnCommand(col, false)
+	cmd := ""
+	for i, state := range col.AlterState {
+		if !state.Processed {
+			col.AlterState[i].Processed = true
+			cmd = getAlterColumnCommand(col, state, false)
+			break
+		}
+	}
+	return cmd
+}
+
+func (pg *PgDriver) AlterDowngadeColumnStatement(col *Column) string {
+	cmd := ""
+	for i, state := range col.AlterState {
+		if state.Processed {
+			col.AlterState[i].Processed = false
+			cmd = getAlterColumnCommand(col, state, true)
+			break
+		}
+	}
+	return cmd
+
 }
 
 func (pg *PgDriver) DropColumnStatement(col *Column) string {
@@ -408,7 +437,7 @@ func (pg *PgDriver) DropColumnStatement(col *Column) string {
 	return sqlCommand.String()
 }
 
-func getAlterColumnCommand(col any, downgrade bool) string {
+func getAlterColumnCommand(col *Column, state AlterState, downgrade bool) string {
 	var sqlCommand bytes.Buffer
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(AlterColumnTmpl)
 	utils.CheckErrLite(err)
@@ -418,39 +447,37 @@ func getAlterColumnCommand(col any, downgrade bool) string {
 	sql := sqlCommand.String()
 
 	if downgrade {
-		alt := col.(*AlterData)
-		switch alt.Type {
+		switch state.Type {
 		case 0:
-			sql = sql + " " + fmt.Sprintf("TYPE %s", alt.DataType)
+			sql = sql + fmt.Sprintf("TYPE %s", state.DataType)
 		case 1:
-			if alt.IsNullable == true {
-				sql = sql + " " + "DROP NOT NULL"
+			if state.IsNullable == true {
+				sql = sql + "DROP NOT NULL"
 			} else {
-				sql = sql + " " + "SET NOT NULL"
+				sql = sql + "SET NOT NULL"
 			}
 		case 2:
-			if alt.ColumnDefault == "" {
-				sql = sql + " " + "DROP DEFAULT"
+			if state.ColumnDefault == "" {
+				sql = sql + "DROP DEFAULT"
 			} else {
-				sql = sql + " " + fmt.Sprintf("SET DEFAULT %s", alt.ColumnDefault)
+				sql = sql + fmt.Sprintf("SET DEFAULT %s", state.ColumnDefault)
 			}
 		}
 	} else {
-		alt := col.(*Column)
-		switch alt.AlterState.Type {
+		switch state.Type {
 		case 0:
-			sql = sql + " " + fmt.Sprintf("TYPE %s", alt.DataType)
+			sql = sql + fmt.Sprintf("TYPE %s", col.DataType)
 		case 1:
-			if alt.IsNullable == true {
-				sql = sql + " " + "DROP NOT NULL"
+			if col.IsNullable == true {
+				sql = sql + "DROP NOT NULL"
 			} else {
-				sql = sql + " " + "SET NOT NULL"
+				sql = sql + "SET NOT NULL"
 			}
 		case 2:
-			if alt.ColumnDefault == "" {
-				sql = sql + " " + "DROP DEFAULT"
+			if col.ColumnDefault == "" {
+				sql = sql + "DROP DEFAULT"
 			} else {
-				sql = sql + " " + fmt.Sprintf("SET DEFAULT %s", alt.ColumnDefault)
+				sql = sql + fmt.Sprintf("SET DEFAULT %s", col.ColumnDefault)
 			}
 		}
 	}
@@ -539,9 +566,18 @@ func (pg *PgDriver) DropConstraintStatement(ref *ReferenceMeta) string {
 }
 
 // helpers
-func normalizeCharacterVariyng(data_type string, lenght pgtype.Uint32) string {
-	if data_type == "character varying" {
+func normalizeColumnDataType(data_type string, lenght pgtype.Uint32, udt_type string) string {
+	switch data_type {
+	case "character varying":
 		data_type = fmt.Sprintf("varchar(%d)", lenght.Uint32)
+	case "ARRAY":
+		// find concrete type
+		switch udt_type {
+		case "_text":
+			data_type = "text[]"
+		case "_int2", "_int4", "_int8":
+			data_type = "integer[]"
+		}
 	}
 	return data_type
 }

@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 
+	utils "github.com/fastbear1/quack/internal"
 	. "github.com/fastbear1/quack/schema"
 )
 
@@ -84,7 +85,6 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 			// Check columns first
 			left := &gmeta[v.l]
 			right := &dbmeta[v.r]
-			fmt.Printf("type of left array %T\n", left)
 			columnsCatalog := getCatalog(left.Columns, right.Columns)
 			for n, col := range columnsCatalog {
 				switch col.delta {
@@ -99,8 +99,10 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 				case 0:
 					fmt.Printf("Column presented on both sides %s (%v)\n", n, right.Columns[col.r])
 					if state := isColumnSchemaChanged(&left.Columns[col.l], &right.Columns[col.r]); state {
-						upFuncList = append(upFuncList, left.Columns[col.l].AlterColumn)
-						downFuncList = append(downFuncList, right.Columns[col.r].AlterColumn)
+						for range left.Columns[col.l].AlterState {
+							upFuncList = append(upFuncList, left.Columns[col.l].AlterColumn)
+							downFuncList = append(downFuncList, left.Columns[col.l].AlterDowngradeColumn)
+						}
 					}
 
 				}
@@ -120,6 +122,10 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 				case 0:
 					fmt.Printf("Index presented on both sides %s (%v)\n", n, right.Columns[ind.r])
 					if state := isIndexSchemaChanged(&left.Indeces[ind.l], &right.Indeces[ind.r]); state {
+						fmt.Println(utils.PrettyPrint(left.Indeces[ind.l]))
+						fmt.Println("-----------------------")
+						fmt.Println(utils.PrettyPrint(right.Indeces[ind.r]))
+						fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 						upFuncList = append(upFuncList, right.Indeces[ind.r].DropIndex, left.Indeces[ind.l].CreateIndex)
 						downFuncList = append(downFuncList, left.Indeces[ind.l].DropIndex, right.Indeces[ind.r].CreateIndex)
 					}
@@ -156,18 +162,15 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 func isColumnSchemaChanged(left *Column, right *Column) bool {
 	var changed bool = false
 	if left.DataType != right.DataType {
-		left.AlterState.Type = 0
-		left.AlterState.DataType = right.DataType
+		left.AlterState = append(left.AlterState, AlterState{Type: 0, DataType: right.DataType})
 		changed = true
 	}
 	if left.IsNullable != right.IsNullable {
-		left.AlterState.Type = 1
-		left.AlterState.IsNullable = right.IsNullable
+		left.AlterState = append(left.AlterState, AlterState{Type: 1, IsNullable: right.IsNullable})
 		changed = true
 	}
 	if left.ColumnDefault != right.ColumnDefault {
-		left.AlterState.Type = 2
-		left.AlterState.ColumnDefault = right.ColumnDefault
+		left.AlterState = append(left.AlterState, AlterState{Type: 2, ColumnDefault: right.ColumnDefault})
 		changed = true
 	}
 	return changed
@@ -189,21 +192,30 @@ func isIndexSchemaChanged(l *IndexMeta, r *IndexMeta) bool {
 		return true
 	}
 
-	lfields := map[string]uint16{}
-	rfields := map[string]uint16{}
-
-	for _, lv := range l.Columns {
-		lfields[lv.Field] = uint16(lv.Priority)
-	}
-	for _, rv := range r.Columns {
-		rfields[rv.Field] = uint16(rv.Priority)
-	}
-
-	for lk, lv := range lfields {
-		rv, ok := rfields[lk]
-		if !ok || lv != rv {
+	// we've already checked that len of columns for left and right data is equal
+	for i, v := range l.Columns {
+		if v.Field != r.Columns[i].Field {
 			return true
 		}
 	}
+
+	/*
+		lfields := map[string]uint16{}
+		rfields := map[string]uint16{}
+
+		for _, lv := range l.Columns {
+			lfields[lv.Field] = uint16(lv.Priority)
+		}
+		for _, rv := range r.Columns {
+			rfields[rv.Field] = uint16(rv.Priority)
+		}
+
+		for lk, lv := range lfields {
+			rv, ok := rfields[lk]
+			if !ok || lv != rv {
+				return true
+			}
+		}
+	*/
 	return false
 }

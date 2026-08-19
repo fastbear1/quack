@@ -1,0 +1,71 @@
+-- +goose Up
+CREATE TABLE "public"."simple_table"(
+	id uuid NOT NULL default gen_random_uuid(),
+	name varchar(255) NOT NULL,
+	sid smallint NOT NULL,
+	email varchar(255) NOT NULL,
+	user_id uuid NOT NULL,
+	status varchar(10) NOT NULL default 'active'::text,
+	name_t varchar(255) NOT NULL,
+	created_at timestamp NOT NULL default now(),
+	updated_at timestamp NOT NULL default now(),
+	PRIMARY KEY ("id"),
+	CONSTRAINT "fk_SimpleTable_user_id__users_id" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON DELETE CASCADE ON UPDATE SET NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_simple_table_sid" ON "public"."simple_table" USING btree (sid);
+CREATE TABLE "public"."clicks"(
+	id uuid NOT NULL default gen_random_uuid(),
+	created_at timestamp without time zone NOT NULL default now(),
+	updated_at timestamp without time zone NOT NULL default now(),
+	user_id uuid NOT NULL,
+	PRIMARY KEY ("id"),
+	CONSTRAINT "clicks_users_user_id_id" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS "idx_clicks_id" ON "public"."clicks" USING btree (id);
+ALTER TABLE "public"."cars" ADD COLUMN IF NOT EXISTS shifts smallint
+CREATE INDEX IF NOT EXISTS "idx_cars_id" ON "public"."cars" USING btree (id);
+ALTER TABLE "public"."owners" DROP COLUMN IF EXISTS name
+CREATE INDEX IF NOT EXISTS "idx_owners_id" ON "public"."owners" USING btree (id);
+ALTER TABLE "public"."commands" ADD COLUMN IF NOT EXISTS owner_id uuid NOT NULL
+ALTER TABLE "public"."commands" DROP COLUMN IF EXISTS description
+ALTER TABLE "public"."commands" ALTER COLUMN IF EXISTS cid SET DEFAULT uuidv4()
+CREATE INDEX IF NOT EXISTS "idx_commands_id" ON "public"."commands" USING btree (id);
+DROP INDEX IF EXISTS "idx_commands_cid"
+CREATE INDEX IF NOT EXISTS "idx_commands_cid" ON "public"."commands" USING btree (cid);
+ALTER TABLE "public"."commands" ADD CONSTRAINT IF NOT EXISTS "commands_owner_owner_id_id" FOREIGN KEY (owner_id) REFERENCES "public"."owners" (id) ON DELETE CASCADE
+DROP TABLE IF EXISTS "public"."recars";
+DROP TABLE IF EXISTS "public"."auth_users";
+
+-- +goose Down
+DROP TABLE IF EXISTS "public"."simple_table";
+DROP INDEX IF EXISTS "idx_simple_table_sid"
+DROP TABLE IF EXISTS "public"."clicks";
+DROP INDEX IF EXISTS "idx_clicks_id"
+ALTER TABLE "public"."cars" DROP COLUMN IF EXISTS shifts
+DROP INDEX IF EXISTS "idx_cars_id"
+ALTER TABLE "public"."owners" ADD COLUMN IF NOT EXISTS name text NOT NULL
+DROP INDEX IF EXISTS "idx_owners_id"
+ALTER TABLE "public"."commands" DROP COLUMN IF EXISTS owner_id
+ALTER TABLE "public"."commands" ADD COLUMN IF NOT EXISTS description text
+ALTER TABLE "public"."commands" ALTER COLUMN IF EXISTS cid TYPE uuid
+DROP INDEX IF EXISTS "idx_commands_id"
+DROP INDEX IF EXISTS "idx_commands_cid"
+CREATE INDEX IF NOT EXISTS "idx_commands_cid" ON "public"."" USING btree (cid);
+ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "commands_owner_owner_id_id"
+CREATE TABLE "public"."recars"(
+	id uuid NOT NULL default gen_random_uuid(),
+	name text NOT NULL,
+	status text NOT NULL default 'active'::text,
+	created_at timestamp without time zone NOT NULL default now(),
+	updated_at timestamp without time zone NOT NULL default now(),
+	PRIMARY KEY ("id")
+);
+CREATE TABLE "public"."auth_users"(
+	id uuid NOT NULL default gen_random_uuid(),
+	user_id uuid NOT NULL,
+	password text NOT NULL,
+	created_at timestamp without time zone NOT NULL default now(),
+	updated_at timestamp without time zone NOT NULL default now(),
+	PRIMARY KEY ("id"),
+	CONSTRAINT "fk_auth_users_users" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON DELETE CASCADE
+);

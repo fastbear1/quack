@@ -28,9 +28,9 @@ go.work.sum
 .env
 *.yaml
 
-# Teting data
-migrations/
-models/
+# Testing data
+./migrations
+./models
 # misc/
 
 # Editor/IDE

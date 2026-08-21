@@ -31,7 +31,8 @@ go.work.sum
 # Testing data
 ./migrations
 ./models
-# misc/
+./tests/migrations
+./quack
 
 # Editor/IDE
 # .idea/

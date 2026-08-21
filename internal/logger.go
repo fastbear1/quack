@@ -53,7 +53,7 @@ func (l *LogSet) formatMessage(message string, args ...any) string {
 
 func (l *LogSet) Info(message string, args ...any) {
 	logLine := l.formatMessage(message, args...)
-	fmt.Print(logLine)
+	fmt.Println(logLine)
 }
 
 func (l *LogSet) Debug(message any, args ...any) {
@@ -63,7 +63,7 @@ func (l *LogSet) Debug(message any, args ...any) {
 		} else {
 			msg, _ := message.(string)
 			logLine := l.formatMessage(msg, args...)
-			fmt.Print(logLine)
+			fmt.Println(logLine)
 		}
 	}
 }

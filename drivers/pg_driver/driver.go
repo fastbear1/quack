@@ -107,9 +107,9 @@ func (pg *PgDriver) GetTablesList() ([]string, error) {
 			clog.Debug(err)
 		}
 		if utils.InArray(pg.conf.Database.Exclude, name) {
-			clog.Info("Skipping table %s\n", name)
+			clog.Info("Skipping table %s", name)
 		} else {
-			clog.Info("Found table %s\n", name)
+			clog.Info("Found table %s", name)
 			tables = append(tables, name)
 		}
 	}

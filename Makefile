@@ -15,6 +15,7 @@ int-test:
 	@rm -rf tests/migrations
 	@mkdir tests/migrations
 	@go test -v ./tests
+	@rm -rf tests/migrations
 
 version:
 	@MAJOR=0; \

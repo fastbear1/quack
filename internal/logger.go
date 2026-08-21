@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	INFO = iota
+	INFO = iota + 1
 	DEBUG
 )
 
 type Logger interface {
 	Info(string, ...any)
-	Debug(string, ...any)
+	Debug(any, ...any)
 }
 
 type LogSet struct {
@@ -20,16 +20,27 @@ type LogSet struct {
 }
 
 // Gel logger once by his name
-var loggingMap = map[string]*LogSet{}
+var LoggingMap map[string]*LogSet
+
+func init() {
+	LoggingMap = make(map[string]*LogSet, 0)
+}
 
 func GetLogger(name string, level any) Logger {
 	logName := strings.ToUpper(name)
-	if lg, ok := loggingMap[logName]; ok {
+	if lg, ok := LoggingMap[logName]; ok {
+		if level != nil {
+			lg.LogLevel = level.(int)
+		}
 		return lg
 	}
-	logLevel := level.(int)
+	logLevel := INFO
+	if level != nil {
+		logLevel = level.(int)
+	}
+
 	log := LogSet{LogLevel: logLevel}
-	loggingMap[logName] = &log
+	LoggingMap[logName] = &log
 	return &log
 }
 
@@ -41,11 +52,18 @@ func (l *LogSet) formatMessage(message string, args ...any) string {
 }
 
 func (l *LogSet) Info(message string, args ...any) {
-	fmt.Println(message)
+	logLine := l.formatMessage(message, args...)
+	fmt.Print(logLine)
 }
 
-func (l *LogSet) Debug(message string, args ...any) {
+func (l *LogSet) Debug(message any, args ...any) {
 	if l.LogLevel == DEBUG {
-		fmt.Println(message)
+		if err, ok := message.(error); ok {
+			fmt.Println(err)
+		} else {
+			msg, _ := message.(string)
+			logLine := l.formatMessage(msg, args...)
+			fmt.Print(logLine)
+		}
 	}
 }

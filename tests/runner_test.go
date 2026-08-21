@@ -25,12 +25,6 @@ func TestInitDatabase(t *testing.T) {
 	err := proc.Run(ctx, conf, migrationFile)
 	assert.Equal(t, err, 0)
 
-	//getting migration file name
-	//lsc, _ := exec.Command("ls", `./migrations/`).Output()
-	//lscfile := strings.Split(string(lsc), "\n")[0]
-	// check that content of migration file is identical to original
-	//assert.True(t, CompareFiles("../sandbox/case1/migrations/init-database.sql", fmt.Sprintf("./migrations/%s", lscfile)))
-
 	home := os.Getenv("HOME")
 	cmd := exec.Command(fmt.Sprintf("%s/go/bin/goose", home), "postgres", "user=quack dbname=quack password=pass host=postgres sslmode=disable", "-dir=migrations", "up")
 
@@ -45,7 +39,6 @@ func TestInitDatabase(t *testing.T) {
 }
 
 func TestManageTableColumns(t *testing.T) {
-	//t.Skip("Skipping test")
 	time.Sleep(time.Second)
 	conf := getTestConfig()
 	conf.Models.Path = "../sandbox/case2/models"
@@ -71,7 +64,6 @@ func TestManageTableColumns(t *testing.T) {
 }
 
 func TestAlterTableColumns(t *testing.T) {
-	//t.Skip("Skipping test")
 	time.Sleep(time.Second)
 	conf := getTestConfig()
 	conf.Models.Path = "../sandbox/case3/models"
@@ -97,7 +89,6 @@ func TestAlterTableColumns(t *testing.T) {
 }
 
 func TestTableIndices(t *testing.T) {
-	//t.Skip("Skipping test")
 	time.Sleep(time.Second)
 	conf := getTestConfig()
 	conf.Models.Path = "../sandbox/case4/models"
@@ -123,7 +114,6 @@ func TestTableIndices(t *testing.T) {
 }
 
 func TestTableConstraints(t *testing.T) {
-	//t.Skip("Skipping test")
 	time.Sleep(time.Second)
 	conf := getTestConfig()
 	conf.Models.Path = "../sandbox/case5/models"
@@ -156,6 +146,7 @@ func getTestConfig() *utils.ConfigYaml {
 	conf.Database.Name = "quack"
 	conf.Database.Type = "postgres"
 	conf.Database.Exclude = append(conf.Database.Exclude, "goose_migrations", "goose_db_version")
+	conf.Verbose = false
 
 	return &conf
 }

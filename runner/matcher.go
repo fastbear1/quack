@@ -1,8 +1,6 @@
 package runner
 
 import (
-	"fmt"
-
 	utils "github.com/fastbear1/quack/internal"
 	. "github.com/fastbear1/quack/schema"
 )
@@ -69,7 +67,7 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 	for k, v := range tablesCatalog {
 		switch v.delta {
 		case 1:
-			fmt.Printf("Present on left side only %s (%v)\n", k, gmeta[v.l].Name)
+			clog.Debug("Present on left side only %s (%v)\n", k, gmeta[v.l].Name)
 			upFuncList = append(upFuncList, gmeta[v.l].CreateTable)
 			downFuncList = append(downFuncList, gmeta[v.l].DeleteTable)
 			for _, i := range gmeta[v.l].Indeces {
@@ -77,11 +75,11 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 				downFuncList = append(downFuncList, i.DropIndex)
 			}
 		case -1:
-			fmt.Printf("Present on right side only %s (%v)\n", k, dbmeta[v.r].Name)
+			clog.Debug("Present on right side only %s (%v)\n", k, dbmeta[v.r].Name)
 			upFuncList = append(upFuncList, dbmeta[v.r].DeleteTable)
 			downFuncList = append(downFuncList, dbmeta[v.r].CreateTable)
 		case 0:
-			fmt.Printf("Check items in both arrays %s (%v - %v)\n", k, gmeta[v.l].Name, dbmeta[v.r].Name)
+			clog.Debug("Check items in both arrays %s (%v - %v)\n", k, gmeta[v.l].Name, dbmeta[v.r].Name)
 			// Check columns first
 			left := &gmeta[v.l]
 			right := &dbmeta[v.r]
@@ -89,15 +87,15 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 			for n, col := range columnsCatalog {
 				switch col.delta {
 				case 1:
-					fmt.Printf("Column presented on left side only %s (%v)\n", n, left.Columns[col.l])
+					clog.Debug("Column presented on left side only %s (%v)\n", n, left.Columns[col.l])
 					upFuncList = append(upFuncList, left.Columns[col.l].CreateColumn)
 					downFuncList = append(downFuncList, left.Columns[col.l].DeleteColumn)
 				case -1:
-					fmt.Printf("Column presented on right side only %s (%v)\n", n, right.Columns[col.r])
+					clog.Debug("Column presented on right side only %s (%v)\n", n, right.Columns[col.r])
 					upFuncList = append(upFuncList, right.Columns[col.r].DeleteColumn)
 					downFuncList = append(downFuncList, right.Columns[col.r].CreateColumn)
 				case 0:
-					fmt.Printf("Column presented on both sides %s (%v)\n", n, right.Columns[col.r])
+					clog.Debug("Column presented on both sides %s (%v)\n", n, right.Columns[col.r])
 					if state := isColumnSchemaChanged(&left.Columns[col.l], &right.Columns[col.r]); state {
 						for range left.Columns[col.l].AlterState {
 							upFuncList = append(upFuncList, left.Columns[col.l].AlterColumn)
@@ -112,15 +110,15 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 			for n, ind := range indicesCatalog {
 				switch ind.delta {
 				case 1:
-					fmt.Printf("Index presented on left side only %s (%v)\n", n, left.Indeces[ind.l])
+					clog.Debug("Index presented on left side only %s (%v)\n", n, left.Indeces[ind.l])
 					upFuncList = append(upFuncList, left.Indeces[ind.l].CreateIndex)
 					downFuncList = append(downFuncList, left.Indeces[ind.l].DropIndex)
 				case -1:
-					fmt.Printf("Index presented on right side only %s (%v)\n", n, right.Indeces[ind.r])
+					clog.Debug("Index presented on right side only %s (%v)\n", n, right.Indeces[ind.r])
 					upFuncList = append(upFuncList, right.Indeces[ind.r].DropIndex)
 					downFuncList = append(downFuncList, right.Indeces[ind.r].CreateIndex)
 				case 0:
-					fmt.Printf("Index presented on both sides %s (%v)\n", n, right.Columns[ind.r])
+					clog.Debug("Index presented on both sides %s (%v)\n", n, right.Columns[ind.r])
 					if state := isIndexSchemaChanged(&left.Indeces[ind.l], &right.Indeces[ind.r]); state {
 						upFuncList = append(upFuncList, right.Indeces[ind.r].DropIndex, left.Indeces[ind.l].CreateIndex)
 						downFuncList = append(downFuncList, left.Indeces[ind.l].DropIndex, right.Indeces[ind.r].CreateIndex)
@@ -133,15 +131,15 @@ func compareMetaState(gmeta []TableMeta, dbmeta []TableMeta) ([]func(drv DbInter
 			for n, ref := range refCatalog {
 				switch ref.delta {
 				case 1:
-					fmt.Printf("Reference presented on left side only %s (%v)\n", n, left.References[ref.l])
+					clog.Debug("Reference presented on left side only %s (%v)\n", n, left.References[ref.l])
 					upFuncList = append(upFuncList, left.References[ref.l].CreateConstraint)
 					downFuncList = append(downFuncList, left.References[ref.l].DeleteConstraint)
 				case -1:
-					fmt.Printf("Reference presented on right side only %s (%v)\n", n, right.References[ref.r])
+					clog.Debug("Reference presented on right side only %s (%v)\n", n, right.References[ref.r])
 					upFuncList = append(upFuncList, right.References[ref.r].DeleteConstraint)
 					downFuncList = append(downFuncList, right.References[ref.r].CreateConstraint)
 				case 0:
-					fmt.Printf("Reference presented on both sides %s (%v)\n", n, right.Columns[ref.r])
+					clog.Debug("Reference presented on both sides %s (%v)\n", n, right.Columns[ref.r])
 					if state := isReferenceSchemaChanged(&left.References[ref.l], &right.References[ref.r]); state {
 						upFuncList = append(upFuncList, right.References[ref.r].DeleteConstraint, left.References[ref.l].CreateConstraint)
 						downFuncList = append(downFuncList, left.References[ref.l].DeleteConstraint, right.References[ref.r].CreateConstraint)

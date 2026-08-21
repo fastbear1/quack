@@ -15,6 +15,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+var clog utils.Logger
+
+func init() {
+	clog = utils.GetLogger("postgres", nil)
+}
+
 // Type conversion from Go type to postgres types
 var TypeConversion = map[string]string{
 	"int":         "bigint",
@@ -56,6 +62,11 @@ type PgDriver struct {
 }
 
 func GetPgDriver(ctx context.Context, conf *utils.ConfigYaml) *PgDriver {
+	logLevel := utils.INFO
+	if conf.Verbose {
+		logLevel = utils.DEBUG
+	}
+	clog = utils.GetLogger("postgres", logLevel)
 	return &PgDriver{
 		ctx:  ctx,
 		conf: conf,
@@ -66,12 +77,6 @@ var _ DbInterface = (*PgDriver)(nil)
 
 // Get single connection
 func getConnection(ctx context.Context, uri string) (*pgx.Conn, error) {
-	//dbCtx := ctx
-	//dbURI := uri
-	//once.Do(func() {
-	//	conn, connErr = pgx.Connect(dbCtx, dbURI)
-	//})
-	//return conn, connErr
 	return pgx.Connect(ctx, uri)
 }
 
@@ -92,19 +97,19 @@ func (pg *PgDriver) GetTablesList() ([]string, error) {
 	)
 	defer rows.Close()
 	if err != nil {
-		fmt.Printf("Query error when getting tables list. %s", err)
+		clog.Info("Query error when getting tables list. %s", err)
 		return []string{}, err
 	}
 	for rows.Next() {
 		var name string
 		err := rows.Scan(&name)
 		if err != nil {
-			fmt.Println(err)
+			clog.Debug(err)
 		}
 		if utils.InArray(pg.conf.Database.Exclude, name) {
-			fmt.Printf("Skipping table %s\n", name)
+			clog.Info("Skipping table %s\n", name)
 		} else {
-			fmt.Printf("Found table %s\n", name)
+			clog.Info("Found table %s\n", name)
 			tables = append(tables, name)
 		}
 	}
@@ -128,12 +133,12 @@ func (pg *PgDriver) GetTableColumnsMeta(name string) ([]Column, error) {
 	)
 	defer rows.Close()
 	if err != nil {
-		fmt.Println("Quering table columns metadata error...")
+		clog.Debug("Quering table columns metadata error...")
 		return []Column{}, err
 	}
 	notes, err := pgx.CollectRows(rows, pgx.RowToStructByName[PgColumn])
 	if err != nil {
-		fmt.Println(name, err)
+		clog.Debug(name, err)
 		return []Column{}, err
 	}
 
@@ -198,7 +203,7 @@ func (pg *PgDriver) GetTableIndices(name string) ([]IndexMeta, error) {
 	var idxt []IndexMeta
 
 	if err != nil {
-		fmt.Println("Quering indices definition data error...")
+		clog.Debug("Quering indices definition data error...")
 		return []IndexMeta{}, err
 	}
 	defer conn.Close(pg.ctx)
@@ -212,7 +217,7 @@ func (pg *PgDriver) GetTableIndices(name string) ([]IndexMeta, error) {
 	)
 	defer row.Close()
 	if err != nil {
-		fmt.Println("Quering table indices error...")
+		clog.Debug("Quering table indices error...")
 		return []IndexMeta{}, err
 	}
 
@@ -232,7 +237,7 @@ func (pg *PgDriver) GetTableReferences(name string) ([]ReferenceMeta, error) {
 	var ref []ReferenceMeta
 
 	if err != nil {
-		fmt.Println("Quering constraint definition data error...")
+		clog.Debug("Quering constraint definition data error...")
 		return []ReferenceMeta{}, err
 	}
 	defer conn.Close(pg.ctx)
@@ -246,7 +251,7 @@ func (pg *PgDriver) GetTableReferences(name string) ([]ReferenceMeta, error) {
 	)
 	defer row.Close()
 	if err != nil {
-		fmt.Println("Quering table constraints error...")
+		clog.Debug("Quering table constraints error...")
 		return []ReferenceMeta{}, err
 	}
 	var ref_name, ref_const_def string
@@ -373,7 +378,7 @@ func (pg *PgDriver) CreateTableStatement(t *TableMeta) string {
 	}
 
 	if err := masterTmpl.Execute(&sqlCommand, ft); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -385,7 +390,7 @@ func (pg *PgDriver) DropTableStatement(t *TableMeta) string {
 	utils.CheckErrLite(err)
 
 	if err := deleteTmpl.Execute(&sqlCommand, t); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -396,7 +401,7 @@ func (pg *PgDriver) CreateColumnStatement(col *Column) string {
 	utils.CheckErrLite(err)
 
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -432,7 +437,7 @@ func (pg *PgDriver) DropColumnStatement(col *Column) string {
 	utils.CheckErrLite(err)
 
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -442,7 +447,7 @@ func getAlterColumnCommand(col *Column, state AlterState, downgrade bool) string
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(AlterColumnTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, col); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	sql := sqlCommand.String()
 
@@ -530,7 +535,7 @@ func (pg *PgDriver) CreateIndexStatement(idx *IndexMeta) string {
 	}
 
 	if err := masterTmpl.Execute(&sqlCommand, t); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -540,7 +545,7 @@ func (pg *PgDriver) DropIndexStatement(idx *IndexMeta) string {
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropIndexTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, idx); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -550,7 +555,7 @@ func (pg *PgDriver) CreateConstraintStatement(ref *ReferenceMeta) string {
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(CreateConstraintTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }
@@ -560,7 +565,7 @@ func (pg *PgDriver) DropConstraintStatement(ref *ReferenceMeta) string {
 	masterTmpl, err := template.New("master").Funcs(funcMap).Parse(DropConstraintTmpl)
 	utils.CheckErrLite(err)
 	if err := masterTmpl.Execute(&sqlCommand, ref); err != nil {
-		fmt.Println(err)
+		clog.Debug(err.Error())
 	}
 	return sqlCommand.String()
 }

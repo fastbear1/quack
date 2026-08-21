@@ -65,12 +65,6 @@ func main() {
 				os.Exit(int(syscall.EINVAL))
 			}
 			ctx := context.Background()
-			// init logger
-			logLevel := utils.INFO
-			if conf.Verbose {
-				logLevel = utils.DEBUG
-			}
-			_ = utils.GetLogger("default", logLevel)
 			code := proc.Run(ctx, conf, fileName)
 			os.Exit(int(code))
 		case "version":

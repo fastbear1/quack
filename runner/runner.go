@@ -9,9 +9,19 @@ import (
 
 var clog utils.Logger
 
+func init() {
+	clog = utils.GetLogger("default", nil)
+}
+
 // quacking migration file pipeline
 func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
-	clog = utils.GetLogger("default", conf.Verbose)
+	// init logger
+	logLevel := utils.INFO
+	if conf.Verbose {
+		logLevel = utils.DEBUG
+	}
+	clog = utils.GetLogger("default", logLevel)
+
 	// step 1: check connection to database
 	var dbTablesMeta []TableMeta
 

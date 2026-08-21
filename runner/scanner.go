@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -156,7 +155,7 @@ func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 	// read file names in directory
 	files, err := os.ReadDir(pDir)
 	if err != nil {
-		fmt.Println("Error parsing directory: ", err)
+		clog.Info("Error parsing directory: ", err)
 		return nil, err
 	}
 
@@ -169,7 +168,7 @@ func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 		// parse file and generate ast tree
 		ftree, err := parser.ParseFile(fset, fn, nil, parser.ParseComments)
 		if err != nil {
-			fmt.Println("Error parsing file: ", file.Name())
+			clog.Info("Error parsing file: ", file.Name())
 		}
 		pFiles = append(pFiles, ftree)
 	}

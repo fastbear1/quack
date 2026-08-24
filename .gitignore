@@ -28,10 +28,11 @@ go.work.sum
 .env
 *.yaml
 
-# Teting data
-migrations/
-models/
-# misc/
+# Testing data
+./migrations
+./models
+./tests/migrations/*
+./quack
 
 # Editor/IDE
 # .idea/

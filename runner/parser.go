@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -24,16 +23,21 @@ func parseModelStruct(drv DbInterface, data ModelStruct) TableMeta {
 
 func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 	var idx IndexMeta
-
 	// Default column declaration
 	column := Column{
-		TableName:         model.Name,
-		ColumnName:        drv.TransformName(field.FieldName),
-		DataType:          drv.TransformType(field.FieldType),
-		IsNullable:        false,
-		ColumnDefault:     "",
-		IsPrimary:         false,
-		PrimaryConstraint: "",
+		TableName:  model.Name,
+		ColumnName: drv.TransformName(field.FieldName),
+		DataType:   drv.TransformType(field.FieldType),
+		IsNullable: func(force bool) bool {
+			if force {
+				return true
+			}
+			return false
+		}(field.ForceNull),
+		ColumnDefault:  "",
+		IsPrimary:      false,
+		PrimaryOptions: PrimaryOptions{},
+		AlterState:     []AlterState{},
 	}
 
 	if field.FieldTag != `` && strings.HasPrefix(field.FieldTag, "gorm:") {
@@ -52,12 +56,13 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 				if val := getValue(kit, kitLen, 1); val != "" {
 					column.ColumnDefault = drv.TransformDefault(column.DataType, val)
 				}
-			case "primary_key":
+			case "primaryKey":
 				column.IsPrimary = true
-				column.PrimaryConstraint = fmt.Sprintf("%s_pkey", column.TableName)
 			case "not null":
 				// already initialized with false
-				column.IsNullable = false
+				if !field.ForceNull {
+					column.IsNullable = false
+				}
 			case "null":
 				column.IsNullable = true
 			case "index", "uniqueindex":
@@ -125,8 +130,20 @@ func parseModelTags(drv DbInterface, model *TableMeta, field FieldStruct) {
 				}
 			}
 		}
-		model.Columns = append(model.Columns, column)
 	}
+	// set primary key status
+	// postgres specification only
+	if column.IsPrimary {
+		if column.DataType == "serial" {
+			column.DataType = drv.TransformType(column.DataType)
+			column.PrimaryOptions.IsSerial = true
+		}
+		if strings.HasPrefix(column.ColumnDefault, "generated") {
+			column.PrimaryOptions.IsIdentity = true
+			column.ColumnDefault = strings.ToUpper(column.ColumnDefault)
+		}
+	}
+	model.Columns = append(model.Columns, column)
 }
 
 func ParseTagSetting(str string, sep string) map[string]string {
@@ -149,7 +166,7 @@ func ParseTagSetting(str string, sep string) map[string]string {
 		if len(values) >= 2 {
 			val := strings.Join(values[1:], ":")
 			val = strings.ReplaceAll(val, `\"`, `"`)
-			settings[k] = val
+			settings[k] = strings.ToLower(val)
 		} else if k != "" {
 			settings[k] = k
 		}

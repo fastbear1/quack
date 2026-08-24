@@ -2,27 +2,39 @@ package runner
 
 import (
 	"context"
-	"fmt"
 
 	utils "github.com/fastbear1/quack/internal"
 	. "github.com/fastbear1/quack/schema"
 )
 
+var clog utils.Logger
+
+func init() {
+	clog = utils.GetLogger("default", nil)
+}
+
 // quacking migration file pipeline
 func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
+	// init logger
+	logLevel := utils.INFO
+	if conf.Verbose {
+		logLevel = utils.DEBUG
+	}
+	clog = utils.GetLogger("default", logLevel)
+
 	// step 1: check connection to database
 	var dbTablesMeta []TableMeta
 
 	drv, err := GetDriver(ctx, conf)
 	if err != nil {
-		fmt.Printf("Error occured in proccess of getting database driver: %s", err)
+		clog.Info("Error occured in proccess of getting database driver: %s", err)
 		return 1
 	}
 
 	// step 1.1: get avaiable tables from database
 	dbTables, err := drv.GetTablesList()
 	if err != nil {
-		fmt.Printf("Error occured while getting tables list: %s", err)
+		clog.Info("Error occured while getting tables list: %s", err)
 		return 1
 	}
 	for _, tableName := range dbTables {
@@ -37,21 +49,21 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	for i := 0; i < len(dbTablesMeta); i++ {
 		res, err := drv.GetTableColumnsMeta(dbTablesMeta[i].Name)
 		if err != nil {
-			fmt.Printf("Error occured while getting tables column list: %s", err)
+			clog.Info("Error occured while getting tables column list: %s", err)
 			return 1
 		}
 		dbTablesMeta[i].Columns = res
 		// step 1.3: get table indices information
 		idx, err := drv.GetTableIndices(dbTablesMeta[i].Name)
 		if err != nil {
-			fmt.Printf("Error occured while getting indices list: %s", err)
+			clog.Info("Error occured while getting indices list: %s", err)
 			return 1
 		}
 		dbTablesMeta[i].Indeces = idx
 		// step 1.4: get table references
 		ref, err := drv.GetTableReferences(dbTablesMeta[i].Name)
 		if err != nil {
-			fmt.Printf("Error occured while getting constraint list: %s", err)
+			clog.Info("Error occured while getting constraint list: %s", err)
 			return 1
 		}
 		dbTablesMeta[i].References = ref
@@ -62,7 +74,7 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 
 	StructRaw, err := Scan(conf)
 	if err != nil {
-		fmt.Printf("Error parsing directory with gorm models: %s", err)
+		clog.Info("Error parsing directory with gorm models: %s", err)
 		return 1
 	}
 
@@ -91,7 +103,7 @@ func Run(ctx context.Context, conf *utils.ConfigYaml, fileName string) int {
 	if len(sqlUp) != 0 && len(sqlDown) != 0 {
 		writeToFile(conf, fileName, sqlUp, sqlDown)
 	} else {
-		fmt.Println("Gorm struct and DB tables already synchronized")
+		clog.Info("Gorm struct and DB tables already synchronized")
 	}
 
 	return 0

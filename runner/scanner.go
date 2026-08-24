@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -15,6 +14,7 @@ type FieldStruct struct {
 	FieldName string
 	FieldType string
 	FieldTag  string
+	ForceNull bool
 }
 
 type ModelStruct struct {
@@ -64,22 +64,42 @@ func getStructs(conf *utils.ConfigYaml, fset *token.FileSet, file *ast.File) ([]
 					EmbedFields:     make([]string, 0),
 					ReferenceFields: make([]FieldStruct, 0),
 				}
-				var fieldData FieldStruct
 
 				for _, field := range e.Fields.List {
+					//ast.Print(fset, field)
 					if len(field.Names) > 0 {
+						fieldData := FieldStruct{}
 						fieldData.FieldName = field.Names[0].String()
 
-						if r, ok := field.Type.(*ast.Ident); ok && r.Obj != nil {
-							// FK column declaration
-							var refField = FieldStruct{}
-							refField.FieldName = field.Names[0].String()
-							refField.FieldType = formatNode(fset, field.Type)
+						switch t := field.Type.(type) {
+						case *ast.StarExpr:
+							// pointer value
+							fieldData.FieldType = formatNode(fset, t.X)
+							fieldData.ForceNull = true
 							if field.Tag != nil {
-								refField.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+								fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
 							}
-							modelData.ReferenceFields = append(modelData.ReferenceFields, refField)
-						} else {
+							modelData.Fields = append(modelData.Fields, fieldData)
+						case *ast.Ident:
+							if t.Obj != nil {
+								// FK column declaration
+								var refField = FieldStruct{}
+								refField.FieldName = field.Names[0].String()
+								refField.FieldType = formatNode(fset, field.Type)
+								if field.Tag != nil {
+									refField.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+								}
+								modelData.ReferenceFields = append(modelData.ReferenceFields, refField)
+
+							} else {
+								fieldData.FieldType = formatNode(fset, field.Type)
+								if field.Tag != nil {
+									fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
+								}
+								modelData.Fields = append(modelData.Fields, fieldData)
+
+							}
+						default:
 							fieldData.FieldType = formatNode(fset, field.Type)
 							if field.Tag != nil {
 								fieldData.FieldTag = field.Tag.Value[1 : len(field.Tag.Value)-1]
@@ -135,7 +155,7 @@ func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 	// read file names in directory
 	files, err := os.ReadDir(pDir)
 	if err != nil {
-		fmt.Println("Error parsing directory: ", err)
+		clog.Info("Error parsing directory: %s", err)
 		return nil, err
 	}
 
@@ -148,7 +168,7 @@ func Scan(conf *utils.ConfigYaml) ([]ModelStruct, error) {
 		// parse file and generate ast tree
 		ftree, err := parser.ParseFile(fset, fn, nil, parser.ParseComments)
 		if err != nil {
-			fmt.Println("Error parsing file: ", file.Name())
+			clog.Info("Error parsing file: %s", file.Name())
 		}
 		pFiles = append(pFiles, ftree)
 	}

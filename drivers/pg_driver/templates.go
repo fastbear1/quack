@@ -14,7 +14,11 @@ SELECT
 	column_name, 
 	data_type, 
 	character_maximum_length, 
-	is_nullable, column_default 
+	is_nullable,
+	column_default,
+	udt_name,
+	is_identity,
+	identity_generation
 FROM information_schema.columns 
 WHERE table_name = @table`
 	FindPrimaryKeyQuery = `
@@ -59,11 +63,11 @@ const (
 {{- end}}
 );`
 	DropTableTmpl        = `DROP TABLE IF EXISTS "public"."{{.Name}}";`
-	CreateColumnTmpl     = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} DEFAULT {{ .ColumnDefault }}{{ end }}`
-	AlterColumnTmpl      = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN IF EXISTS {{ .ColumnName }}`
-	DropColumnTmpl       = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN IF EXISTS {{ .ColumnName }}`
-	CreateIndexTmpl      = `CREATE INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}"{{if .Unique}} UNIQUE{{end}} USING {{.Type}} {{.Expression}}({{.Columns}});`
-	DropIndexTmpl        = `DROP INDEX IF EXISTS "{{.Name}}"`
-	CreateConstraintTmpl = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT IF NOT EXISTS "{{.Name}}" FOREIGN KEY ({{.Column}}) REFERENCES "public"."{{.RefTable}}" ({{.RefColumn}}){{if .RefOptions}} {{.RefOptions}}{{end}}`
-	DropConstraintTmpl   = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}}"`
+	CreateColumnTmpl     = `ALTER TABLE "public"."{{.TableName}}" ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .DataType }}{{if not .IsNullable}} NOT NULL{{end}}{{ if .ColumnDefault }} DEFAULT {{ .ColumnDefault }}{{ end }};`
+	AlterColumnTmpl      = `ALTER TABLE "public"."{{.TableName}}" ALTER COLUMN {{ .ColumnName }} `
+	DropColumnTmpl       = `ALTER TABLE "public"."{{.TableName}}" DROP COLUMN IF EXISTS {{ .ColumnName }};`
+	CreateIndexTmpl      = `CREATE{{if .Unique}} UNIQUE{{end}} INDEX IF NOT EXISTS "{{.Name}}" ON "public"."{{.TableName}}" USING {{.Type}} {{if .Expression}}({{.Expression}}({{.Columns}})){{else}}({{.Columns}}){{end}};`
+	DropIndexTmpl        = `DROP INDEX IF EXISTS "{{.Name}}";`
+	CreateConstraintTmpl = `ALTER TABLE "public"."{{.TableName}}" ADD CONSTRAINT "{{.Name}}" FOREIGN KEY ({{.Column}}) REFERENCES "public"."{{.RefTable}}" ({{.RefColumn}}){{if .RefOptions}} {{.RefOptions}}{{end}};`
+	DropConstraintTmpl   = `ALTER TABLE "public"."{{.TableName}}" DROP CONSTRAINT IF EXISTS "{{.Name}}";`
 )

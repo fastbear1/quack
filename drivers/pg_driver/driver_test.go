@@ -98,16 +98,19 @@ func TestNormalizeVarChar(t *testing.T) {
 		name     string
 		datatype string
 		lenght   uint32
+		udt_name string
 		expect   string
 	}{
-		{"Default Varying Character", "character varying", 255, "varchar(255)"},
-		{"Small Varying Character", "character varying", 10, "varchar(10)"},
-		{"Not A Varying Character", "smallint", 100, "smallint"},
+		{"Default Varying Character", "character varying", 255, "string", "varchar(255)"},
+		{"Small Varying Character", "character varying", 10, "string", "varchar(10)"},
+		{"Not A Varying Character", "smallint", 100, "int", "smallint"},
+		{"Integer array type", "ARRAY", 10, "_int4", "integer[]"},
+		{"Text array type", "ARRAY", 10, "_text", "text[]"},
 	}
 
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
-			res := normalizeCharacterVariyng(tt.datatype, pgtype.Uint32{Uint32: tt.lenght, Valid: true})
+			res := normalizeColumnDataType(tt.datatype, pgtype.Uint32{Uint32: tt.lenght, Valid: true}, tt.udt_name)
 			assert.Equal(t, res, tt.expect)
 		})
 	}
@@ -189,85 +192,85 @@ func TestCreaetTabelStatement(t *testing.T) {
 				Name: "simple_table",
 				Columns: []Column{
 					{
-						TableName:         "simple_table",
-						ColumnName:        "id",
-						DataType:          "uuid",
-						IsNullable:        false,
-						ColumnDefault:     "gen_random_uuid()",
-						IsPrimary:         true,
-						PrimaryConstraint: "simple_table_pkey",
+						TableName:      "simple_table",
+						ColumnName:     "id",
+						DataType:       "uuid",
+						IsNullable:     false,
+						ColumnDefault:  "gen_random_uuid()",
+						IsPrimary:      true,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "name",
-						DataType:          "varchar(255)",
-						IsNullable:        false,
-						ColumnDefault:     "",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "name",
+						DataType:       "varchar(255)",
+						IsNullable:     false,
+						ColumnDefault:  "",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "sid",
-						DataType:          "smallint",
-						IsNullable:        false,
-						ColumnDefault:     "",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "sid",
+						DataType:       "smallint",
+						IsNullable:     false,
+						ColumnDefault:  "",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "email",
-						DataType:          "varchar(255)",
-						IsNullable:        false,
-						ColumnDefault:     "",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "email",
+						DataType:       "varchar(255)",
+						IsNullable:     false,
+						ColumnDefault:  "",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "user_id",
-						DataType:          "uuid",
-						IsNullable:        false,
-						ColumnDefault:     "",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "user_id",
+						DataType:       "uuid",
+						IsNullable:     false,
+						ColumnDefault:  "",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "status",
-						DataType:          "varchar(10)",
-						IsNullable:        false,
-						ColumnDefault:     "'active'::text",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "status",
+						DataType:       "varchar(10)",
+						IsNullable:     false,
+						ColumnDefault:  "'active'::text",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "name_t",
-						DataType:          "varchar(255)",
-						IsNullable:        false,
-						ColumnDefault:     "",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "name_t",
+						DataType:       "varchar(255)",
+						IsNullable:     false,
+						ColumnDefault:  "",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "created_at",
-						DataType:          "timestamp",
-						IsNullable:        false,
-						ColumnDefault:     "now()",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "created_at",
+						DataType:       "timestamp",
+						IsNullable:     false,
+						ColumnDefault:  "now()",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 					{
-						TableName:         "simple_table",
-						ColumnName:        "updated_at",
-						DataType:          "timestamp",
-						IsNullable:        false,
-						ColumnDefault:     "now()",
-						IsPrimary:         false,
-						PrimaryConstraint: "",
+						TableName:      "simple_table",
+						ColumnName:     "updated_at",
+						DataType:       "timestamp",
+						IsNullable:     false,
+						ColumnDefault:  "now()",
+						IsPrimary:      false,
+						PrimaryOptions: PrimaryOptions{},
 					},
 				},
 				References: []ReferenceMeta{},
@@ -319,8 +322,8 @@ func TestColumnStatements(t *testing.T) {
 				ColumnDefault: "",
 			},
 			[]string{
-				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS sid smallint NOT NULL`,
-				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS sid`,
+				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS sid smallint NOT NULL;`,
+				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS sid;`,
 			},
 		},
 		{
@@ -333,8 +336,8 @@ func TestColumnStatements(t *testing.T) {
 				ColumnDefault: "'test@mail.com'::text",
 			},
 			[]string{
-				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS email varchar(255) NOT NULL DEFAULT 'test@mail.com'::text`,
-				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS email`,
+				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS email varchar(255) NOT NULL DEFAULT 'test@mail.com'::text;`,
+				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS email;`,
 			},
 		},
 		{
@@ -346,8 +349,8 @@ func TestColumnStatements(t *testing.T) {
 				ColumnDefault: "gen_random_uuid()",
 			},
 			[]string{
-				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL DEFAULT gen_random_uuid()`,
-				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS user_id`,
+				`ALTER TABLE "public"."simple_table" ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL DEFAULT gen_random_uuid();`,
+				`ALTER TABLE "public"."simple_table" DROP COLUMN IF EXISTS user_id;`,
 			},
 		},
 	}
@@ -389,7 +392,7 @@ func TestCreateDropIndexStatement(t *testing.T) {
 			},
 			[]string{
 				`CREATE INDEX IF NOT EXISTS "idx_auth_users_id" ON "public"."auth_users" USING btree (id);`,
-				`DROP INDEX IF EXISTS "idx_auth_users_id"`,
+				`DROP INDEX IF EXISTS "idx_auth_users_id";`,
 			},
 		},
 		{
@@ -412,8 +415,8 @@ func TestCreateDropIndexStatement(t *testing.T) {
 				},
 			},
 			[]string{
-				`CREATE INDEX IF NOT EXISTS "idx_auth_users_password" ON "public"."auth_users" UNIQUE USING btree (password);`,
-				`DROP INDEX IF EXISTS "idx_auth_users_password"`,
+				`CREATE UNIQUE INDEX IF NOT EXISTS "idx_auth_users_password" ON "public"."auth_users" USING btree (password);`,
+				`DROP INDEX IF EXISTS "idx_auth_users_password";`,
 			},
 		},
 		{
@@ -436,8 +439,8 @@ func TestCreateDropIndexStatement(t *testing.T) {
 				},
 			},
 			[]string{
-				`CREATE INDEX IF NOT EXISTS "idx_auth_users_password_upper" ON "public"."auth_users" UNIQUE USING btree upper(password);`,
-				`DROP INDEX IF EXISTS "idx_auth_users_password_upper"`,
+				`CREATE UNIQUE INDEX IF NOT EXISTS "idx_auth_users_password_upper" ON "public"."auth_users" USING btree (upper(password));`,
+				`DROP INDEX IF EXISTS "idx_auth_users_password_upper";`,
 			},
 		},
 		{
@@ -483,7 +486,7 @@ func TestCreateDropIndexStatement(t *testing.T) {
 			},
 			[]string{
 				`CREATE INDEX IF NOT EXISTS "idx_auth_users_password_multi" ON "public"."auth_users" USING btree (user_id, user_type, password, user_tag);`,
-				`DROP INDEX IF EXISTS "idx_auth_users_password_multi"`,
+				`DROP INDEX IF EXISTS "idx_auth_users_password_multi";`,
 			},
 		},
 	}
@@ -515,8 +518,8 @@ func TestCreateDropConstraintStatement(t *testing.T) {
 				RefOptions: "ON DELETE CASCADE",
 			},
 			[]string{
-				`ALTER TABLE "public"."commands" ADD CONSTRAINT IF NOT EXISTS "commands_cars_car_id_id" FOREIGN KEY (car_id) REFERENCES "public"."cars" (id) ON DELETE CASCADE`,
-				`ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "commands_cars_car_id_id"`,
+				`ALTER TABLE "public"."commands" ADD CONSTRAINT "commands_cars_car_id_id" FOREIGN KEY (car_id) REFERENCES "public"."cars" (id) ON DELETE CASCADE;`,
+				`ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "commands_cars_car_id_id";`,
 			},
 		},
 		{
@@ -529,8 +532,8 @@ func TestCreateDropConstraintStatement(t *testing.T) {
 				RefOptions: "ON DELETE CASCADE ON UPDATE DO NOTHING",
 			},
 			[]string{
-				`ALTER TABLE "public"."auth_users" ADD CONSTRAINT IF NOT EXISTS "fk_auth_users_users" FOREIGN KEY (user_id) REFERENCES "public"."users" (id) ON DELETE CASCADE ON UPDATE DO NOTHING`,
-				`ALTER TABLE "public"."auth_users" DROP CONSTRAINT IF EXISTS "fk_auth_users_users"`,
+				`ALTER TABLE "public"."auth_users" ADD CONSTRAINT "fk_auth_users_users" FOREIGN KEY (user_id) REFERENCES "public"."users" (id) ON DELETE CASCADE ON UPDATE DO NOTHING;`,
+				`ALTER TABLE "public"."auth_users" DROP CONSTRAINT IF EXISTS "fk_auth_users_users";`,
 			},
 		},
 		{
@@ -543,8 +546,8 @@ func TestCreateDropConstraintStatement(t *testing.T) {
 				RefOptions: "ON DELETE RESTRICT",
 			},
 			[]string{
-				`ALTER TABLE "public"."commands" ADD CONSTRAINT IF NOT EXISTS "fk_commands_cars_car_id_id_upd" FOREIGN KEY (car_id) REFERENCES "public"."cars" (id) ON DELETE RESTRICT`,
-				`ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "fk_commands_cars_car_id_id_upd"`,
+				`ALTER TABLE "public"."commands" ADD CONSTRAINT "fk_commands_cars_car_id_id_upd" FOREIGN KEY (car_id) REFERENCES "public"."cars" (id) ON DELETE RESTRICT;`,
+				`ALTER TABLE "public"."commands" DROP CONSTRAINT IF EXISTS "fk_commands_cars_car_id_id_upd";`,
 			},
 		},
 	}
